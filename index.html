@@ -1,0 +1,2041 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Akitta — AI Assistant</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --bg:#0b0b0c;--surface:#111113;--surface-2:#16161a;--surface-3:#1c1c21;
+    --border:#25252b;--text:#e8e8ea;--text-dim:#a1a1aa;--text-faint:#6b6b74;
+    --accent:#5c7cfa;--accent-dim:rgba(92,124,250,.12);--red:#ef4444;
+    --pro:#f59e0b;--pro-dim:rgba(245,158,11,.12);--pro-glow:rgba(245,158,11,.35);
+  }
+  html,body{height:100%}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,Helvetica,Arial,sans-serif;font-size:15px;line-height:1.6;overflow:hidden;-webkit-font-smoothing:antialiased}
+  body::before{content:"";position:fixed;inset:0;z-index:9999;pointer-events:none;opacity:.032;mix-blend-mode:overlay;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)'/%3E%3C/svg%3E")}
+  .app{display:flex;height:100%;position:relative;z-index:1}
+
+  .auth{position:fixed;inset:0;z-index:500;background:radial-gradient(800px 500px at 50% 0%, rgba(92,124,250,.10), transparent 70%), #08080a;display:flex;align-items:center;justify-content:center;padding:20px;overflow-y:auto}
+  .auth.hidden{display:none}
+  .auth-card{width:100%;max-width:420px;background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:32px 30px 26px;box-shadow:0 30px 80px rgba(0,0,0,.6);animation:rise .35s cubic-bezier(.2,.7,.3,1) both;margin:auto}
+  @keyframes rise{from{opacity:0;transform:translateY(14px) scale(.98)}to{opacity:1;transform:none}}
+  .auth-logo{width:56px;height:56px;border-radius:16px;margin:0 auto 18px;background:linear-gradient(150deg,#5c7cfa,#3d55c9);display:grid;place-items:center;box-shadow:0 8px 28px rgba(92,124,250,.28)}
+  .auth-logo svg{width:32px;height:32px}
+  .auth-title{font-size:22px;font-weight:640;letter-spacing:-.02em;text-align:center;margin-bottom:6px}
+  .auth-sub{text-align:center;color:var(--text-faint);font-size:13.5px;margin-bottom:22px;line-height:1.5}
+  .auth-tabs{display:flex;gap:4px;background:var(--surface-2);border:1px solid var(--border);border-radius:11px;padding:4px;margin-bottom:20px}
+  .auth-tab{flex:1;padding:9px 10px;border-radius:8px;background:transparent;border:none;color:var(--text-faint);font:inherit;font-size:13.5px;font-weight:560;cursor:pointer;transition:.15s}
+  .auth-tab.active{background:var(--surface-3);color:#fff}
+  .auth-tab:hover:not(.active){color:var(--text)}
+  .field{margin-bottom:14px}
+  .field label{display:block;font-size:12.5px;font-weight:560;color:var(--text-dim);margin-bottom:7px}
+  .field .hint{font-size:11.5px;color:var(--text-faint);font-weight:400;margin-left:5px}
+  .field input{width:100%;padding:12px 14px;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;color:var(--text);font:inherit;font-size:14.5px;outline:none;transition:border-color .15s,box-shadow .15s}
+  .field input:focus{border-color:rgba(92,124,250,.65);box-shadow:0 0 0 3px rgba(92,124,250,.12)}
+  .field input::placeholder{color:#55555f}
+  .pw-wrap{position:relative}
+  .pw-wrap input{padding-right:44px}
+  .pw-toggle{position:absolute;right:6px;top:50%;transform:translateY(-50%);background:transparent;border:none;color:var(--text-faint);width:34px;height:34px;border-radius:8px;cursor:pointer;display:grid;place-items:center;transition:.12s}
+  .pw-toggle:hover{background:var(--surface-3);color:var(--text)}
+  .pw-toggle svg{width:16px;height:16px}
+  .auth-btn{width:100%;padding:12px;background:var(--accent);border:none;border-radius:10px;color:#fff;font:inherit;font-size:14.5px;font-weight:600;cursor:pointer;transition:filter .15s,transform .1s;margin-top:8px}
+  .auth-btn:hover:not(:disabled){filter:brightness(1.12)}
+  .auth-btn:active:not(:disabled){transform:scale(.985)}
+  .auth-btn:disabled{background:#232329;color:#4e4e58;cursor:not-allowed}
+  .auth-error{background:rgba(239,68,68,.09);border:1px solid rgba(239,68,68,.28);border-radius:9px;color:#fca5a5;font-size:13px;padding:10px 13px;margin-bottom:12px;display:none;line-height:1.55}
+  .auth-error.on{display:block;animation:shake .35s ease}
+  @keyframes shake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-5px)}40%,80%{transform:translateX(5px)}}
+  .auth-info{background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.28);border-radius:9px;color:#86efac;font-size:13px;padding:10px 13px;margin-bottom:12px;display:none;line-height:1.5}
+  .auth-info.on{display:block}
+  .auth-legal{text-align:center;font-size:11.5px;color:#4a4a54;margin-top:18px;line-height:1.6}
+  .auth-legal b{color:#6b6b74;font-weight:600}
+
+  .modal{position:fixed;inset:0;z-index:600;background:rgba(0,0,0,.72);backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;padding:20px}
+  .modal.on{display:flex;animation:fadeIn .2s ease both}
+  @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+  .modal-card{width:100%;max-width:400px;background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:28px 26px 22px;box-shadow:0 30px 80px rgba(0,0,0,.7);animation:rise .3s cubic-bezier(.2,.7,.3,1) both;position:relative}
+  .modal-close{position:absolute;top:14px;right:14px;background:transparent;border:none;color:var(--text-faint);width:30px;height:30px;border-radius:8px;cursor:pointer;display:grid;place-items:center;transition:.12s}
+  .modal-close:hover{background:var(--surface-3);color:var(--text)}
+  .modal-close svg{width:15px;height:15px}
+  .modal-icon{width:52px;height:52px;border-radius:15px;margin:0 auto 16px;background:linear-gradient(150deg,#f59e0b,#d97706);display:grid;place-items:center;box-shadow:0 8px 28px var(--pro-glow)}
+  .modal-icon svg{width:28px;height:28px}
+  .modal-title{font-size:20px;font-weight:640;letter-spacing:-.02em;text-align:center;margin-bottom:6px}
+  .modal-sub{text-align:center;color:var(--text-faint);font-size:13.5px;margin-bottom:20px;line-height:1.5}
+  .code-input{width:100%;padding:14px 16px;background:var(--surface-2);border:1px solid var(--border);border-radius:11px;color:var(--text);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:14.5px;font-weight:500;outline:none;transition:border-color .15s,box-shadow .15s;letter-spacing:.02em}
+  .code-input:focus{border-color:rgba(245,158,11,.65);box-shadow:0 0 0 3px rgba(245,158,11,.13)}
+  .code-input::placeholder{color:#55555f;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;letter-spacing:0}
+  .code-input.error{border-color:rgba(239,68,68,.6);animation:shake .35s ease}
+  .code-msg{margin-top:10px;font-size:13px;padding:9px 13px;border-radius:9px;display:none;line-height:1.5}
+  .code-msg.on{display:block}
+  .code-msg.err{background:rgba(239,68,68,.09);border:1px solid rgba(239,68,68,.28);color:#fca5a5}
+  .code-msg.ok{background:rgba(34,197,94,.09);border:1px solid rgba(34,197,94,.28);color:#86efac}
+  .code-msg.used{background:rgba(245,158,11,.09);border:1px solid rgba(245,158,11,.28);color:#fbbf24}
+  .modal-btn{width:100%;padding:12px;background:var(--accent);border:none;border-radius:10px;color:#fff;font:inherit;font-size:14.5px;font-weight:600;cursor:pointer;transition:filter .15s,transform .1s;margin-top:14px}
+  .modal-btn:hover:not(:disabled){filter:brightness(1.12)}
+  .modal-btn:active:not(:disabled){transform:scale(.985)}
+  .modal-btn:disabled{background:#232329;color:#4e4e58;cursor:not-allowed}
+  .modal-btn.pro{background:linear-gradient(150deg,#f59e0b,#d97706);color:#1a1205}
+
+  .sidebar{width:262px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;transition:margin-left .22s cubic-bezier(.4,0,.2,1)}
+  .sidebar.hidden{margin-left:-262px}
+  .sb-head{padding:14px 12px 10px;display:flex;align-items:center;gap:9px}
+  .mark{width:26px;height:26px;border-radius:7px;flex-shrink:0;background:linear-gradient(150deg,#5c7cfa,#3d55c9);display:grid;place-items:center;box-shadow:0 2px 8px rgba(92,124,250,.28)}
+  .mark svg{width:15px;height:15px}
+  .wordmark{font-size:14.5px;font-weight:640;letter-spacing:-.01em}
+  .sb-new{margin:2px 12px 8px;display:flex;align-items:center;gap:9px;padding:9px 11px;background:var(--surface-2);border:1px solid var(--border);border-radius:9px;color:var(--text);font:inherit;font-size:13.5px;font-weight:520;cursor:pointer;transition:.14s}
+  .sb-new:hover{background:var(--surface-3);border-color:#32323a}
+  .sb-new svg{width:15px;height:15px;opacity:.75}
+  .sb-codes{margin:0 12px 12px;display:flex;align-items:center;gap:9px;padding:9px 11px;background:linear-gradient(150deg,rgba(245,158,11,.10),rgba(217,119,6,.06));border:1px solid rgba(245,158,11,.28);border-radius:9px;color:#fbbf24;font:inherit;font-size:13.5px;font-weight:560;cursor:pointer;transition:.14s}
+  .sb-codes:hover{background:linear-gradient(150deg,rgba(245,158,11,.18),rgba(217,119,6,.10));border-color:rgba(245,158,11,.45)}
+  .sb-codes svg{width:15px;height:15px;flex-shrink:0}
+  .sb-codes .pro-badge{margin-left:auto;font-size:9.5px;font-weight:700;letter-spacing:.06em;background:linear-gradient(150deg,#f59e0b,#d97706);color:#1a1205;padding:2px 6px;border-radius:4px;display:none}
+  .sb-codes.is-pro .pro-badge{display:inline-block}
+
+  .sb-label{padding:0 20px 7px;font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--text-faint)}
+  .sb-list{flex:1;overflow-y:auto;padding:0 8px 8px}
+  .sb-list::-webkit-scrollbar{width:6px}
+  .sb-list::-webkit-scrollbar-thumb{background:#232329;border-radius:6px}
+  .sb-item{display:flex;align-items:center;gap:9px;padding:8px 11px;margin-bottom:1px;border-radius:8px;cursor:pointer;font-size:13.5px;color:var(--text-dim);white-space:nowrap;overflow:hidden;transition:.12s}
+  .sb-item:hover{background:var(--surface-2);color:var(--text)}
+  .sb-item.active{background:var(--surface-3);color:var(--text)}
+  .sb-item svg{width:14px;height:14px;flex-shrink:0;opacity:.5}
+  .sb-item span{overflow:hidden;text-overflow:ellipsis}
+  .sb-foot{border-top:1px solid var(--border);padding:10px 12px}
+  .sb-user{display:flex;align-items:center;gap:10px;padding:7px 8px;border-radius:9px;cursor:pointer;transition:background .12s;position:relative}
+  .sb-user:hover{background:var(--surface-2)}
+  .sb-user-menu{position:absolute;bottom:calc(100% + 6px);left:0;right:0;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:5px;box-shadow:0 14px 34px rgba(0,0,0,.55);display:none;animation:menuIn .16s ease both;z-index:100}
+  @keyframes menuIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  .sb-user-menu.on{display:block}
+  .sb-menu-item{display:flex;align-items:center;gap:9px;padding:8px 11px;border-radius:7px;font-size:13px;color:var(--text-dim);cursor:pointer;transition:.12s;border:none;background:transparent;width:100%;font-family:inherit;text-align:left}
+  .sb-menu-item:hover{background:var(--surface-3);color:var(--text)}
+  .sb-menu-item svg{width:14px;height:14px;flex-shrink:0;opacity:.7}
+  .sb-menu-item.danger{color:#fca5a5}
+  .sb-menu-item.danger:hover{background:rgba(239,68,68,.1);color:#fecaca}
+  .avatar-me{width:26px;height:26px;border-radius:7px;flex-shrink:0;background:linear-gradient(150deg,#5c7cfa,#3d55c9);color:#fff;display:grid;place-items:center;font-size:12px;font-weight:700;transition:.3s}
+  .avatar-me.pro{background:linear-gradient(150deg,#f59e0b,#d97706);box-shadow:0 0 12px var(--pro-glow)}
+  .sb-user-info{line-height:1.25;overflow:hidden;flex:1;min-width:0}
+  .sb-user-name{font-size:13px;font-weight:540;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:flex;align-items:center;gap:6px}
+  .sb-user-name .name-pro{font-size:9.5px;font-weight:700;letter-spacing:.06em;background:linear-gradient(150deg,#f59e0b,#d97706);color:#1a1205;padding:1px 5px;border-radius:4px;display:none}
+  .sb-user-name.is-pro .name-pro{display:inline-block}
+  .sb-user-plan{font-size:11px;color:var(--text-faint)}
+  .sb-user-caret{width:12px;height:12px;flex-shrink:0;opacity:.5;color:var(--text-faint)}
+
+  .main{flex:1;display:flex;flex-direction:column;min-width:0;position:relative}
+  .topbar{height:52px;flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:0 16px;border-bottom:1px solid var(--border);background:rgba(11,11,12,.72);backdrop-filter:blur(12px);position:relative;z-index:5}
+  .tb-left{display:flex;align-items:center;gap:6px;min-width:0}
+  .icon-btn{width:32px;height:32px;border-radius:8px;border:none;background:transparent;color:var(--text-dim);cursor:pointer;display:grid;place-items:center;transition:.12s;flex-shrink:0}
+  .icon-btn:hover{background:var(--surface-2);color:var(--text)}
+  .icon-btn svg{width:17px;height:17px}
+  .icon-btn.active{color:var(--accent);background:var(--accent-dim)}
+  .model{display:flex;align-items:center;gap:7px;padding:6px 10px;border-radius:8px;font-size:13.5px;font-weight:560;cursor:pointer;transition:background .12s;border:1px solid transparent}
+  .model:hover{background:var(--surface-2);border-color:var(--border)}
+  .model svg{width:13px;height:13px;opacity:.5}
+  .model-pro-badge{font-size:9.5px;font-weight:700;letter-spacing:.06em;background:linear-gradient(150deg,#f59e0b,#d97706);color:#1a1205;padding:2px 6px;border-radius:4px;display:none;margin-left:2px}
+  .model.is-pro .model-pro-badge{display:inline-block}
+  .tb-right{display:flex;align-items:center;gap:4px}
+
+  .scroll{flex:1;overflow-y:auto;scroll-behavior:smooth}
+  .scroll::-webkit-scrollbar{width:10px}
+  .scroll::-webkit-scrollbar-thumb{background:#212127;border-radius:8px;border:3px solid var(--bg)}
+  .stream{max-width:768px;margin:0 auto;padding:28px 24px 40px}
+
+  .row{margin-bottom:26px;animation:rise2 .22s cubic-bezier(.2,.7,.3,1) both}
+  @keyframes rise2{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  .row.user{display:flex;justify-content:flex-end}
+  .user-stack{display:flex;flex-direction:column;align-items:flex-end;gap:6px;max-width:80%}
+  .bubble-user{background:var(--surface-3);border:1px solid var(--border);border-radius:16px;border-bottom-right-radius:5px;padding:11px 16px;font-size:15px;line-height:1.62;white-space:pre-wrap;word-wrap:break-word}
+  .user-image{max-width:280px;max-height:280px;border-radius:12px;border:1px solid var(--border);display:block;object-fit:cover}
+  .row.ai{display:flex;gap:14px}
+  .ai-mark{width:28px;height:28px;border-radius:8px;flex-shrink:0;background:linear-gradient(150deg,#5c7cfa,#3d55c9);display:grid;place-items:center;margin-top:2px;transition:.3s}
+  .row.ai.is-pro .ai-mark{background:linear-gradient(150deg,#f59e0b,#d97706);box-shadow:0 0 14px var(--pro-glow)}
+  .ai-mark svg{width:16px;height:16px}
+  .ai-body{flex:1;min-width:0;font-size:15px;line-height:1.72}
+  .ai-name{font-size:13px;font-weight:600;margin-bottom:5px;color:var(--text);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .ai-name .pro-badge{font-size:9.5px;font-weight:700;letter-spacing:.06em;background:linear-gradient(150deg,#f59e0b,#d97706);color:#1a1205;padding:2px 6px;border-radius:4px}
+  .ai-status{font-size:11.5px;font-weight:500;color:var(--accent);background:var(--accent-dim);padding:2px 8px;border-radius:99px;display:inline-flex;align-items:center;gap:5px}
+  .ai-status.is-pro{color:var(--pro);background:var(--pro-dim)}
+  .ai-status .spinner{width:9px;height:9px;border:1.5px solid rgba(92,124,250,.3);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite}
+  .ai-status.is-pro .spinner{border-color:rgba(245,158,11,.3);border-top-color:var(--pro)}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .ai-text{color:#dcdce0;word-wrap:break-word}
+  .ai-text p{margin-bottom:12px}
+  .ai-text p:last-child{margin-bottom:0}
+  .ai-text strong{color:#fff;font-weight:600}
+  .ai-text em{color:var(--text-dim)}
+  .ai-text h2,.ai-text h3,.ai-text h4{color:#fff;font-weight:620;letter-spacing:-.01em;margin:20px 0 9px;line-height:1.35}
+  .ai-text h2{font-size:18px}
+  .ai-text h3{font-size:16.5px}
+  .ai-text h4{font-size:15px}
+  .ai-text ul{margin:0 0 12px;padding-left:22px}
+  .ai-text li{margin-bottom:5px}
+  .ai-text li::marker{color:var(--text-faint)}
+  .ai-text code{background:#1d1d23;border:1px solid #2a2a32;padding:1.5px 5px;border-radius:5px;font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;font-size:13px;color:#c8d0ff}
+  .ai-text a{color:var(--accent);text-decoration:none;border-bottom:1px solid rgba(92,124,250,.3)}
+  .ai-text sup.src-ref{font-size:10.5px;color:var(--accent);font-weight:600;background:var(--accent-dim);border-radius:4px;padding:1px 5px;margin-left:2px;text-decoration:none;vertical-align:super;line-height:0;border:none}
+  .sources{margin-top:16px;padding-top:14px;border-top:1px solid var(--border)}
+  .sources-label{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-faint);margin-bottom:9px}
+  .sources-list{display:flex;flex-direction:column;gap:6px}
+  .source{display:flex;align-items:center;gap:9px;padding:8px 11px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;text-decoration:none;color:var(--text-dim);font-size:12.5px;transition:.14s}
+  .source:hover{background:var(--surface-3);border-color:#33333d;color:var(--text)}
+  .source-num{width:18px;height:18px;border-radius:5px;flex-shrink:0;background:var(--accent-dim);color:var(--accent);display:grid;place-items:center;font-size:10.5px;font-weight:700}
+  .source-title{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .source-domain{font-size:11px;color:var(--text-faint)}
+
+  .code{margin:14px 0;border:1px solid var(--border);border-radius:10px;overflow:hidden;background:#0e0e11}
+  .code-top{display:flex;align-items:center;justify-content:space-between;padding:7px 12px;background:var(--surface-2);border-bottom:1px solid var(--border);font-size:11.5px;color:var(--text-faint);font-family:ui-monospace,Menlo,Consolas,monospace}
+  .code-lang{color:var(--accent);font-weight:600;letter-spacing:.03em}
+  .code-actions{display:flex;gap:4px}
+  .code-copy,.code-save{background:transparent;border:1px solid transparent;color:var(--text-faint);font:inherit;font-size:11.5px;cursor:pointer;padding:3px 9px;border-radius:5px;transition:.12s;font-family:inherit}
+  .code-copy:hover,.code-save:hover{background:var(--surface-3);color:var(--text)}
+  .code-save{border-color:rgba(92,124,250,.25);color:var(--accent)}
+  .code-save:hover{background:var(--accent-dim);color:#c3cdff}
+  .code pre{padding:14px;overflow-x:auto;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:13px;line-height:1.62;color:#cfd4e0;white-space:pre}
+  .tok-kw{color:#c792ea}.tok-str{color:#c3e88d}.tok-num{color:#f78c6c}.tok-com{color:#5c6370;font-style:italic}
+
+  .img-wrap{margin:14px 0;border:1px solid var(--border);border-radius:12px;overflow:hidden;background:#0e0e11;max-width:100%}
+  .img-head{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--surface-2);border-bottom:1px solid var(--border);font-size:11.5px;color:var(--text-faint);font-family:ui-monospace,Menlo,Consolas,monospace;flex-wrap:wrap;gap:6px}
+  .img-head .lbl{color:var(--accent);font-weight:600;letter-spacing:.03em;display:flex;align-items:center;gap:6px}
+  .img-head .lbl svg{width:13px;height:13px}
+  .img-actions{display:flex;gap:4px}
+  .img-act{background:transparent;border:1px solid transparent;color:var(--text-faint);font:inherit;font-size:11px;cursor:pointer;padding:3px 9px;border-radius:5px;transition:.12s;display:inline-flex;align-items:center;gap:5px}
+  .img-act:hover{background:var(--surface-3);color:var(--text)}
+  .img-body{position:relative;background:#08080a;min-height:200px;display:grid;place-items:center}
+  .img-body img{display:block;width:100%;height:auto;max-width:100%;animation:fadeIn .4s ease both}
+  .img-loading{position:absolute;inset:0;display:grid;place-items:center;background:#08080a;color:var(--text-faint);font-size:13px;flex-direction:column;gap:14px;padding:20px}
+  .img-loading-spin{width:36px;height:36px;border-radius:50%;border:2.5px solid rgba(92,124,250,.2);border-top-color:var(--accent);animation:spin .9s linear infinite}
+  .img-loading-text{display:flex;flex-direction:column;gap:4px;align-items:center;text-align:center}
+  .img-loading-text b{color:var(--text);font-weight:600;font-size:13px}
+  .img-loading-text span{font-size:11.5px;opacity:.7}
+
+  .acts{display:flex;gap:2px;margin-top:10px;opacity:0;transition:opacity .16s}
+  .row.ai:hover .acts{opacity:1}
+  .act{width:28px;height:28px;border-radius:7px;border:none;background:transparent;color:var(--text-faint);cursor:pointer;display:grid;place-items:center;transition:.12s}
+  .act:hover{background:var(--surface-2);color:var(--text)}
+  .act svg{width:14px;height:14px}
+
+  .dots{display:flex;gap:5px;padding:7px 0}
+  .dots i{width:6px;height:6px;border-radius:50%;background:#4a4a56;animation:blink 1s infinite ease-in-out}
+  .dots i:nth-child(2){animation-delay:.14s}
+  .dots i:nth-child(3){animation-delay:.28s}
+  @keyframes blink{0%,60%,100%{opacity:.3;transform:translateY(0)}30%{opacity:1;transform:translateY(-4px)}}
+  .caret{display:inline-block;width:7px;height:16px;background:var(--accent);vertical-align:-2px;margin-left:2px;border-radius:1px;animation:blip .8s steps(2) infinite}
+  .row.ai.is-pro .caret{background:var(--pro)}
+  @keyframes blip{0%,50%{opacity:1}51%,100%{opacity:0}}
+
+  .comp-wrap{flex-shrink:0;padding:8px 24px 16px;background:linear-gradient(to top,var(--bg) 62%,transparent);position:relative;z-index:4}
+  .comp{max-width:768px;margin:0 auto;background:var(--surface-2);border:1px solid var(--border);border-radius:17px;padding:11px 11px 11px 17px;transition:.16s;box-shadow:0 2px 14px rgba(0,0,0,.28)}
+  .comp:focus-within{border-color:#3a3a46;box-shadow:0 2px 20px rgba(0,0,0,.4),0 0 0 3px rgba(92,124,250,.07)}
+  .comp.is-pro{border-color:rgba(245,158,11,.35)}
+  .comp.is-pro:focus-within{border-color:rgba(245,158,11,.6);box-shadow:0 2px 20px rgba(0,0,0,.4),0 0 0 3px rgba(245,158,11,.10)}
+  .comp.listening{border-color:rgba(239,68,68,.5);box-shadow:0 0 0 3px rgba(239,68,68,.10)}
+  .comp.dragover{border-color:rgba(92,124,250,.7);background:rgba(92,124,250,.06)}
+
+  /* Attachment preview strip */
+  .attach-strip{display:none;gap:8px;padding:8px 4px 10px;flex-wrap:wrap;border-bottom:1px solid var(--border);margin-bottom:8px}
+  .attach-strip.on{display:flex}
+  .attach-thumb{position:relative;width:64px;height:64px;border-radius:10px;overflow:hidden;border:1px solid var(--border);flex-shrink:0;background:#000}
+  .attach-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+  .attach-remove{
+    position:absolute;top:3px;right:3px;width:18px;height:18px;border-radius:50%;
+    background:rgba(0,0,0,.75);color:#fff;border:none;cursor:pointer;
+    display:grid;place-items:center;font-size:11px;line-height:1;padding:0;
+    transition:.12s;
+  }
+  .attach-remove:hover{background:var(--red)}
+  .attach-remove svg{width:10px;height:10px}
+
+  .comp-row{display:flex;align-items:flex-end;gap:6px}
+  #ta{flex:1;background:transparent;border:none;outline:none;color:var(--text);font:inherit;font-size:15px;line-height:1.55;resize:none;max-height:190px;padding:6px 0;overflow-y:auto;font-family:inherit}
+  #ta::placeholder{color:#5a5a64}
+
+  .img-btn{width:34px;height:34px;border-radius:10px;border:none;background:transparent;color:var(--text-faint);cursor:pointer;display:grid;place-items:center;transition:.14s;flex-shrink:0}
+  .img-btn:hover:not(:disabled){background:var(--surface-3);color:var(--text)}
+  .img-btn:disabled{opacity:.4;cursor:not-allowed}
+  .img-btn svg{width:17px;height:17px}
+
+  .mic-btn{width:34px;height:34px;border-radius:10px;border:none;background:transparent;color:var(--text-faint);cursor:pointer;display:grid;place-items:center;transition:.14s;flex-shrink:0;position:relative}
+  .mic-btn:hover:not(:disabled){background:var(--surface-3);color:var(--text)}
+  .mic-btn:disabled{opacity:.4;cursor:not-allowed}
+  .mic-btn svg{width:17px;height:17px}
+  .mic-btn.recording{background:rgba(239,68,68,.14);color:var(--red)}
+  .mic-btn.recording::before{content:"";position:absolute;inset:-3px;border-radius:13px;border:2px solid rgba(239,68,68,.45);animation:pulseRing 1.4s ease-out infinite}
+  @keyframes pulseRing{0%{transform:scale(1);opacity:.9}100%{transform:scale(1.25);opacity:0}}
+
+  .listening-bar{max-width:768px;margin:0 auto 8px;padding:9px 14px;background:rgba(239,68,68,.10);border:1px solid rgba(239,68,68,.30);border-radius:10px;display:none;align-items:center;gap:10px;font-size:13px;color:#fca5a5}
+  .listening-bar.on{display:flex}
+  .listening-bar b{color:#fff;font-weight:600}
+  .listening-stop{margin-left:auto;background:transparent;border:1px solid rgba(239,68,68,.4);color:#fca5a5;font:inherit;font-size:11.5px;font-weight:600;padding:4px 10px;border-radius:6px;cursor:pointer}
+
+  .send{width:34px;height:34px;border-radius:10px;border:none;background:var(--accent);color:#fff;cursor:pointer;display:grid;place-items:center;transition:.14s;flex-shrink:0}
+  .send:hover:not(:disabled){background:#6d89fb}
+  .send:active:not(:disabled){transform:scale(.94)}
+  .send:disabled{background:#232329;color:#4e4e58;cursor:not-allowed}
+  .send svg{width:16px;height:16px}
+  .comp.is-pro .send{background:linear-gradient(150deg,#f59e0b,#d97706);color:#1a1205}
+  .legal{max-width:768px;margin:9px auto 0;text-align:center;font-size:11.5px;color:#52525c}
+
+  .scrim{display:none;position:fixed;inset:0;z-index:20;background:rgba(0,0,0,.6);backdrop-filter:blur(2px)}
+  .scrim.on{display:block}
+
+  .toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);z-index:900;background:linear-gradient(150deg,#f59e0b,#d97706);color:#1a1205;padding:12px 22px;border-radius:12px;font-weight:700;font-size:14px;box-shadow:0 12px 40px var(--pro-glow);display:none;align-items:center;gap:10px;animation:toastIn .4s cubic-bezier(.2,.7,.3,1) both}
+  .toast.on{display:flex}
+  .toast svg{width:18px;height:18px}
+  @keyframes toastIn{from{opacity:0;transform:translate(-50%,-20px)}to{opacity:1;transform:translate(-50%,0)}}
+
+  @media(max-width:860px){
+    .sidebar{position:fixed;top:0;bottom:0;left:0;z-index:30;width:280px}
+    .sidebar.hidden{margin-left:-280px}
+    .stream,.comp-wrap{padding-left:16px;padding-right:16px}
+    .user-stack{max-width:88%}
+  }
+</style>
+</head>
+<body>
+
+<div class="toast" id="toast">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l2.5 6.5L21 9l-5 4.5L17.5 21 12 17.5 6.5 21 8 13.5 3 9l6.5-.5L12 2z"/></svg>
+  <span id="toastText">Pro unlocked!</span>
+</div>
+
+<div class="modal" id="codesModal">
+  <div class="modal-card">
+    <button class="modal-close" id="modalClose" title="Close">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+    </button>
+    <div class="modal-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#1a1205" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="11" width="18" height="11" rx="2"/>
+        <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+      </svg>
+    </div>
+    <div class="modal-title" id="modalTitle">Enter a secret code</div>
+    <div class="modal-sub" id="modalSub">Unlock special features for Akitta.</div>
+
+    <input type="text" class="code-input" id="codeInput" placeholder="Type your code here…" spellcheck="false" autocomplete="off" maxlength="64">
+    <div class="code-msg" id="codeMsg"></div>
+
+    <button class="modal-btn" id="redeemBtn" disabled>Redeem</button>
+  </div>
+</div>
+
+<div class="auth" id="authOverlay">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <svg viewBox="0 0 40 40" fill="none">
+        <path d="M11 15 L8.5 5 L18 11.5 Z" fill="#fff"/>
+        <path d="M29 15 L31.5 5 L22 11.5 Z" fill="#fff"/>
+        <circle cx="20" cy="22" r="11.5" fill="#fff"/>
+        <circle cx="16" cy="21" r="1.9" fill="#3d55c9"/>
+        <circle cx="24" cy="21" r="1.9" fill="#3d55c9"/>
+        <path d="M20 26 l-1.9 -1.8 h3.8 z" fill="#3d55c9"/>
+      </svg>
+    </div>
+    <div class="auth-title" id="authTitle">Welcome to Akitta</div>
+    <div class="auth-sub" id="authSub">Sign in or create a local account — no email needed.</div>
+    <div class="auth-tabs">
+      <button class="auth-tab active" id="tabSignin" type="button">Sign in</button>
+      <button class="auth-tab" id="tabSignup" type="button">Create account</button>
+    </div>
+    <div class="auth-error" id="authError"></div>
+    <div class="auth-info" id="authInfo"></div>
+    <div class="field">
+      <label for="usernameInput">Username</label>
+      <input type="text" id="usernameInput" placeholder="Pick a name" autocomplete="username" spellcheck="false" maxlength="32">
+    </div>
+    <div class="field">
+      <label for="passwordInput">Password <span class="hint">(more than 4 characters)</span></label>
+      <div class="pw-wrap">
+        <input type="password" id="passwordInput" placeholder="••••••" autocomplete="current-password" maxlength="64">
+        <button class="pw-toggle" id="pwToggle" type="button" title="Show password">
+          <svg id="eyeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+    <button class="auth-btn" id="submitBtn" type="button" disabled>Sign in</button>
+    <div class="auth-legal">Accounts are saved <b>locally in this browser</b>.<br>Nothing is sent anywhere.</div>
+  </div>
+</div>
+
+<div class="app" id="appRoot" style="display:none">
+  <aside class="sidebar" id="sidebar">
+    <div class="sb-head">
+      <div class="mark"><svg viewBox="0 0 40 40" fill="none"><path d="M11 15 L8.5 5 L18 11.5 Z" fill="#fff"/><path d="M29 15 L31.5 5 L22 11.5 Z" fill="#fff"/><circle cx="20" cy="22" r="11.5" fill="#fff"/><circle cx="16" cy="21" r="1.9" fill="#3d55c9"/><circle cx="24" cy="21" r="1.9" fill="#3d55c9"/><path d="M20 26 l-1.9 -1.8 h3.8 z" fill="#3d55c9"/></svg></div>
+      <div class="wordmark">Akitta</div>
+    </div>
+    <button class="sb-new" id="newChat" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>New chat</button>
+    <button class="sb-codes" id="codesBtn" type="button">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="11" width="18" height="11" rx="2"/>
+        <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+      </svg>
+      Codes
+      <span class="pro-badge">PRO</span>
+    </button>
+    <div class="sb-label">Recent</div>
+    <div class="sb-list" id="chatList"></div>
+    <div class="sb-foot">
+      <div class="sb-user" id="userArea">
+        <div class="sb-user-menu" id="userMenu">
+          <button class="sb-menu-item" id="switchBtn" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>Switch account</button>
+          <button class="sb-menu-item danger" id="signOutBtn" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>Sign out</button>
+        </div>
+        <div class="avatar-me" id="userAvatar">U</div>
+        <div class="sb-user-info">
+          <div class="sb-user-name" id="userName">username <span class="name-pro">PRO</span></div>
+          <div class="sb-user-plan" id="userPlan">Local account</div>
+        </div>
+        <svg class="sb-user-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+    </div>
+  </aside>
+  <div class="scrim" id="scrim"></div>
+  <main class="main">
+    <header class="topbar">
+      <div class="tb-left">
+        <button class="icon-btn" id="menuBtn" style="display:none" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg></button>
+        <div class="model" id="modelLabel">
+          Akitta
+          <span class="model-pro-badge">PRO</span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+        </div>
+      </div>
+      <div class="tb-right">
+        <button class="icon-btn" id="ttsToggle" type="button" title="Read replies out loud">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M11 5L6 9H2v6h4l5 4V5z"/>
+            <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+            <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+          </svg>
+        </button>
+      </div>
+    </header>
+    <div class="scroll" id="scroll"><div id="stage"></div></div>
+    <div class="comp-wrap">
+      <div class="listening-bar" id="listeningBar">
+        <b>Listening…</b> <span id="liveTranscript">say something</span>
+        <button class="listening-stop" id="stopMicBtn" type="button">Stop</button>
+      </div>
+      <div class="comp" id="compBox">
+        <div class="attach-strip" id="attachStrip"></div>
+        <div class="comp-row">
+          <textarea id="ta" rows="1" placeholder="Ask anything… or attach an image" spellcheck="false"></textarea>
+          <button class="img-btn" id="imgBtn" type="button" title="Attach image">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="3" width="18" height="18" rx="2"/>
+              <circle cx="8.5" cy="8.5" r="1.5"/>
+              <path d="M21 15l-5-5L5 21"/>
+            </svg>
+          </button>
+          <button class="mic-btn" id="micBtn" type="button" title="Speak to Akitta">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="9" y="3" width="6" height="12" rx="3"/>
+              <path d="M5 11a7 7 0 0 0 14 0"/>
+              <line x1="12" y1="18" x2="12" y2="22"/>
+              <line x1="8" y1="22" x2="16" y2="22"/>
+            </svg>
+          </button>
+          <button class="send" id="send" type="button" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"/><path d="M5 12l7-7 7 7"/></svg></button>
+        </div>
+        <input type="file" id="fileInput" accept="image/*" style="display:none" multiple>
+      </div>
+      <div class="legal">Akitta can write code, answer questions, generate images, and read attachments.</div>
+    </div>
+  </main>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  const $ = id => document.getElementById(id);
+
+  const CAT_SVG = '<svg viewBox="0 0 40 40" fill="none"><path d="M11 15 L8.5 5 L18 11.5 Z" fill="#fff"/><path d="M29 15 L31.5 5 L22 11.5 Z" fill="#fff"/><circle cx="20" cy="22" r="11.5" fill="#fff"/><circle cx="16" cy="21" r="1.9" fill="#3d55c9"/><circle cx="24" cy="21" r="1.9" fill="#3d55c9"/><path d="M20 26 l-1.9 -1.8 h3.8 z" fill="#3d55c9"/></svg>';
+  const ICONS = {
+    copy:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>',
+    redo:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>',
+    chat:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 8.5 8.5 0 0 1-3.8-.9L3 21l1.9-5a8.4 8.4 0 0 1-.9-3.8 8.4 8.4 0 0 1 8.4-9 8.4 8.4 0 0 1 8.6 8.3z"/></svg>',
+    image:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>',
+    download:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>',
+    open:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><path d="M15 3h6v6"/><path d="M10 14L21 3"/></svg>',
+    refresh:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10"/><path d="M20.49 15a9 9 0 0 1-14.85 3.36L1 14"/></svg>',
+    speak:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>'
+  };
+
+  const SECRET_CODES = { "abdalrahmankittyal": { tier: "pro", label: "Pro" } };
+  const PRO_KEY = "akitta_pro_v6";
+  const USED_CODES_KEY = "akitta_used_codes_v6";
+
+  let currentUsername = null;
+
+  const loadProMap = () => { try { const r = localStorage.getItem(PRO_KEY); const o = r ? JSON.parse(r) : {}; return (o && typeof o === "object") ? o : {}; } catch(_){ return {}; } };
+  const saveProMap = m => { try { localStorage.setItem(PRO_KEY, JSON.stringify(m)); } catch(_){} };
+  const loadUsedMap = () => { try { const r = localStorage.getItem(USED_CODES_KEY); const o = r ? JSON.parse(r) : {}; return (o && typeof o === "object") ? o : {}; } catch(_){ return {}; } };
+  const saveUsedMap = m => { try { localStorage.setItem(USED_CODES_KEY, JSON.stringify(m)); } catch(_){} };
+
+  function isPro(){ if (!currentUsername) return false; return !!loadProMap()[currentUsername]; }
+  function setPro(on){
+    if (!currentUsername) return;
+    const m = loadProMap();
+    if (on) m[currentUsername] = true; else delete m[currentUsername];
+    saveProMap(m);
+  }
+  function isCodeUsed(code){
+    if (!currentUsername) return false;
+    const m = loadUsedMap();
+    const arr = m[currentUsername] || [];
+    return arr.indexOf(code.toLowerCase()) !== -1;
+  }
+  function markCodeUsed(code){
+    if (!currentUsername) return;
+    const m = loadUsedMap();
+    if (!Array.isArray(m[currentUsername])) m[currentUsername] = [];
+    const c = code.toLowerCase();
+    if (m[currentUsername].indexOf(c) === -1) m[currentUsername].push(c);
+    saveUsedMap(m);
+  }
+
+  function applyProUI(){
+    const on = isPro();
+    document.querySelectorAll(".model").forEach(el => el.classList.toggle("is-pro", on));
+    const compBox = $("compBox");
+    if (compBox) compBox.classList.toggle("is-pro", on);
+    const av = $("userAvatar");
+    if (av) av.classList.toggle("pro", on);
+    const un = $("userName");
+    if (un) un.classList.toggle("is-pro", on);
+    const cb = $("codesBtn");
+    if (cb) cb.classList.toggle("is-pro", on);
+    const up = $("userPlan");
+    if (up) up.textContent = currentUsername ? (on ? "Pro account" : "Local account") : "Not signed in";
+  }
+
+  const codesModal = $("codesModal");
+  const codeInput = $("codeInput");
+  const codeMsg = $("codeMsg");
+  const redeemBtn = $("redeemBtn");
+  const modalTitle = $("modalTitle");
+  const modalSub = $("modalSub");
+
+  function openCodes(){
+    if (!currentUsername){ showToast("Sign in first to use codes"); return; }
+    codesModal.classList.add("on");
+    codeMsg.classList.remove("on", "err", "ok", "used");
+    codeInput.value = "";
+    codeInput.classList.remove("error");
+    if (isPro()){
+      modalTitle.textContent = "You're already Pro";
+      modalSub.textContent = "This account has Pro unlocked. Enjoy!";
+      redeemBtn.textContent = "Close";
+      redeemBtn.classList.add("pro");
+      redeemBtn.disabled = false;
+    } else {
+      modalTitle.textContent = "Enter a secret code";
+      modalSub.textContent = "Unlock Pro for " + currentUsername + ".";
+      redeemBtn.textContent = "Redeem";
+      redeemBtn.classList.remove("pro");
+      redeemBtn.disabled = true;
+    }
+    setTimeout(() => codeInput.focus(), 80);
+  }
+  function closeCodes(){ codesModal.classList.remove("on"); }
+
+  $("codesBtn").addEventListener("click", openCodes);
+  $("modalClose").addEventListener("click", closeCodes);
+  codesModal.addEventListener("click", e => { if (e.target === codesModal) closeCodes(); });
+  document.addEventListener("keydown", e => { if (e.key === "Escape" && codesModal.classList.contains("on")) closeCodes(); });
+
+  codeInput.addEventListener("input", () => {
+    const v = codeInput.value.trim();
+    redeemBtn.disabled = v.length === 0;
+    codeMsg.classList.remove("on", "err", "ok", "used");
+    codeInput.classList.remove("error");
+  });
+  codeInput.addEventListener("keydown", e => {
+    if (e.key === "Enter" && !redeemBtn.disabled){ e.preventDefault(); redeemBtn.click(); }
+  });
+
+  function showCodeMsg(text, type){
+    codeMsg.textContent = text;
+    codeMsg.className = "code-msg on " + (type || "ok");
+  }
+  function showToast(text){
+    const t = $("toast");
+    $("toastText").textContent = text;
+    t.classList.add("on");
+    setTimeout(() => t.classList.remove("on"), 3200);
+  }
+
+  redeemBtn.addEventListener("click", () => {
+    if (!currentUsername){ closeCodes(); return; }
+    if (isPro()){ closeCodes(); return; }
+    const raw = codeInput.value.trim();
+    if (!raw) return;
+    const code = raw.toLowerCase();
+
+    if (isCodeUsed(code)){
+      codeInput.classList.add("error");
+      showCodeMsg("You've already used this code on this account.", "used");
+      setTimeout(() => codeInput.classList.remove("error"), 500);
+      return;
+    }
+    const entry = SECRET_CODES[code];
+    if (!entry){
+      codeInput.classList.add("error");
+      showCodeMsg("That code isn't valid. Try again.", "err");
+      setTimeout(() => codeInput.classList.remove("error"), 500);
+      return;
+    }
+    markCodeUsed(code);
+    setPro(true);
+    applyProUI();
+    showCodeMsg("✓ Pro unlocked for " + currentUsername + "! This code cannot be used again.", "ok");
+    showToast("Pro unlocked — " + currentUsername + " is now Pro");
+    redeemBtn.textContent = "Close";
+    redeemBtn.classList.add("pro");
+    modalTitle.textContent = "Welcome to Pro";
+    modalSub.textContent = currentUsername + " is now on the Pro plan.";
+    window.dispatchEvent(new CustomEvent("akitta:pro", { detail: { pro: true, username: currentUsername } }));
+    setTimeout(closeCodes, 1800);
+  });
+
+  /* ============================================================
+     AUTH
+     ============================================================ */
+  const authOverlay = $("authOverlay"), appRoot = $("appRoot");
+  const authTitle = $("authTitle"), authSub = $("authSub");
+  const authError = $("authError"), authInfo = $("authInfo");
+  const tabSignin = $("tabSignin"), tabSignup = $("tabSignup");
+  const usernameInput = $("usernameInput"), passwordInput = $("passwordInput");
+  const pwToggle = $("pwToggle"), eyeIcon = $("eyeIcon"), submitBtn = $("submitBtn");
+  const userArea = $("userArea"), userMenu = $("userMenu");
+  const userNameEl = $("userName"), userAvatarEl = $("userAvatar"), userPlanEl = $("userPlan");
+  const signOutBtn = $("signOutBtn"), switchBtn = $("switchBtn");
+
+  const ACCOUNTS_KEY = "akitta_accounts_v6";
+  const SESSION_KEY = "akitta_session_v6";
+  let mode = "signin";
+  let mainAppStarted = false;
+
+  const loadAccounts = () => { try { const r = localStorage.getItem(ACCOUNTS_KEY); const a = r ? JSON.parse(r) : []; return Array.isArray(a) ? a : []; } catch(_){ return []; } };
+  const saveAccounts = arr => { try { localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(arr)); } catch(_){} };
+  const saveSession = u => { try { localStorage.setItem(SESSION_KEY, u); } catch(_){} };
+  const clearSession = () => { try { localStorage.removeItem(SESSION_KEY); } catch(_){} };
+  const loadSession = () => { try { return localStorage.getItem(SESSION_KEY); } catch(_){ return null; } };
+
+  const showAuthErr = m => { authError.textContent = m; authError.classList.add("on"); };
+  const hideAuthErr = () => authError.classList.remove("on");
+  const showAuthInfo = m => { authInfo.textContent = m; authInfo.classList.add("on"); };
+  const hideAuthInfo = () => authInfo.classList.remove("on");
+  const clearAuthMsgs = () => { hideAuthErr(); hideAuthInfo(); };
+
+  function setMode(m){
+    mode = m; clearAuthMsgs();
+    if (m === "signin"){
+      tabSignin.classList.add("active"); tabSignup.classList.remove("active");
+      authTitle.textContent = "Welcome back";
+      authSub.textContent = "Sign in to your Akitta account.";
+      submitBtn.textContent = "Sign in";
+    } else {
+      tabSignup.classList.add("active"); tabSignin.classList.remove("active");
+      authTitle.textContent = "Create your account";
+      authSub.textContent = "Pick a username and password — no email needed.";
+      submitBtn.textContent = "Create account";
+    }
+    updateSubmit();
+    setTimeout(() => usernameInput.focus(), 80);
+  }
+
+  function updateSubmit(){
+    const u = usernameInput.value.trim(), p = passwordInput.value;
+    submitBtn.disabled = !(u.length >= 2 && p.length >= 1);
+  }
+
+  let pwVisible = false;
+  pwToggle.addEventListener("click", () => {
+    pwVisible = !pwVisible;
+    passwordInput.type = pwVisible ? "text" : "password";
+    eyeIcon.innerHTML = pwVisible
+      ? '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>'
+      : '<path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/>';
+  });
+
+  tabSignin.addEventListener("click", () => setMode("signin"));
+  tabSignup.addEventListener("click", () => setMode("signup"));
+
+  usernameInput.addEventListener("input", () => { usernameInput.value = usernameInput.value.replace(/\s+/g, " ").slice(0, 32); clearAuthMsgs(); updateSubmit(); });
+  passwordInput.addEventListener("input", () => { clearAuthMsgs(); updateSubmit(); });
+  [usernameInput, passwordInput].forEach(el => el.addEventListener("keydown", e => { if (e.key === "Enter" && !submitBtn.disabled) submitBtn.click(); }));
+
+  submitBtn.addEventListener("click", () => {
+    clearAuthMsgs();
+    const username = usernameInput.value.trim(), password = passwordInput.value;
+    if (!username){ showAuthErr("Please enter a username."); usernameInput.focus(); return; }
+    if (username.length < 2){ showAuthErr("Username must be at least 2 characters."); usernameInput.focus(); return; }
+    if (!password){ showAuthErr("Please enter a password."); passwordInput.focus(); return; }
+    if (password.length <= 4){ showAuthErr("Password must be more than 4 characters."); passwordInput.focus(); return; }
+
+    const accounts = loadAccounts();
+    const lu = username.toLowerCase();
+
+    if (mode === "signup"){
+      if (accounts.some(a => a.username.toLowerCase() === lu)){ showAuthErr("That username is already taken. Try a different one."); usernameInput.focus(); return; }
+      if (accounts.some(a => a.password === password)){ showAuthErr("That password is already in use by another account. Pick a different one."); passwordInput.focus(); return; }
+      accounts.push({ username, password, createdAt: Date.now() });
+      saveAccounts(accounts);
+      saveSession(username);
+      showAuthInfo("Account created! Signing you in…");
+      setTimeout(() => enterApp({ username }), 300);
+    } else {
+      const account = accounts.find(a => a.username.toLowerCase() === lu);
+      if (!account){ showAuthErr("No account with that username. Create one instead?"); return; }
+      if (account.password !== password){ showAuthErr("Wrong password. Try again."); passwordInput.value = ""; passwordInput.focus(); updateSubmit(); return; }
+      saveSession(account.username);
+      showAuthInfo("Welcome back!");
+      setTimeout(() => enterApp({ username: account.username }), 250);
+    }
+  });
+
+  function enterApp(user){
+    currentUsername = user.username;
+    userNameEl.innerHTML = user.username + ' <span class="name-pro">PRO</span>';
+    userAvatarEl.textContent = (user.username[0] || "U").toUpperCase();
+    userPlanEl.textContent = isPro() ? "Pro account" : "Local account";
+    applyProUI();
+    usernameInput.value = ""; passwordInput.value = "";
+    clearAuthMsgs();
+    authOverlay.classList.add("hidden");
+    appRoot.style.display = "";
+    if (mainAppStarted){
+      if (window.__akittaRefreshUser) window.__akittaRefreshUser(user);
+    } else {
+      mainAppStarted = true;
+      if (typeof window.__akittaBoot === "function") window.__akittaBoot(user);
+    }
+  }
+
+  function leaveApp(){
+    clearSession();
+    currentUsername = null;
+    userMenu.classList.remove("on");
+    authOverlay.classList.remove("hidden");
+    appRoot.style.display = "none";
+    usernameInput.value = ""; passwordInput.value = "";
+    clearAuthMsgs();
+    applyProUI();
+    setMode("signin");
+  }
+
+  signOutBtn.addEventListener("click", e => { e.stopPropagation(); leaveApp(); });
+  switchBtn.addEventListener("click", e => {
+    e.stopPropagation(); userMenu.classList.remove("on");
+    clearSession();
+    currentUsername = null;
+    authOverlay.classList.remove("hidden"); appRoot.style.display = "none";
+    usernameInput.value = ""; passwordInput.value = "";
+    clearAuthMsgs(); applyProUI(); setMode("signin");
+  });
+  userArea.addEventListener("click", e => {
+    if (e.target.closest(".sb-user-menu")) return;
+    userMenu.classList.toggle("on");
+  });
+  document.addEventListener("click", e => { if (!userArea.contains(e.target)) userMenu.classList.remove("on"); });
+
+  /* ============================================================
+     MAIN APP
+     ============================================================ */
+  window.__akittaBoot = function(user){
+    const stage = $("stage"), scroll = $("scroll"), ta = $("ta"), sendBtn = $("send");
+    const chatList = $("chatList"), sidebar = $("sidebar"), scrim = $("scrim");
+    const micBtn = $("micBtn"), compBox = $("compBox");
+    const listeningBar = $("listeningBar"), liveTranscript = $("liveTranscript");
+    const stopMicBtn = $("stopMicBtn"), ttsToggle = $("ttsToggle");
+    const imgBtn = $("imgBtn"), fileInput = $("fileInput"), attachStrip = $("attachStrip");
+
+    const WELCOME_TEXT = "Hi, I'm **Akitta** 🐾\n\nAsk me anything — I can chat, write code in any language, answer questions, generate images, and read images you attach.\n\nTry tapping the **mic** to speak, or the **image icon** to attach a picture.";
+
+    const titleCase = s => String(s).replace(/\b\w/g, c => c.toUpperCase());
+
+    /* ---------- Attachments state ---------- */
+    const attachments = []; // { dataUrl, name, type }
+
+    function renderAttachments(){
+      attachStrip.innerHTML = "";
+      if (!attachments.length){
+        attachStrip.classList.remove("on");
+        return;
+      }
+      attachStrip.classList.add("on");
+      attachments.forEach((a, i) => {
+        const thumb = document.createElement("div");
+        thumb.className = "attach-thumb";
+        const img = document.createElement("img");
+        img.src = a.dataUrl;
+        img.alt = a.name;
+        const rm = document.createElement("button");
+        rm.className = "attach-remove";
+        rm.type = "button";
+        rm.title = "Remove";
+        rm.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>';
+        rm.addEventListener("click", () => {
+          attachments.splice(i, 1);
+          renderAttachments();
+          setSend();
+        });
+        thumb.appendChild(img);
+        thumb.appendChild(rm);
+        attachStrip.appendChild(thumb);
+      });
+    }
+
+    function addFiles(files){
+      const arr = Array.from(files).filter(f => f.type.startsWith("image/"));
+      if (!arr.length) return;
+      arr.slice(0, 6 - attachments.length).forEach(file => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          attachments.push({ dataUrl: reader.result, name: file.name, type: file.type });
+          renderAttachments();
+          setSend();
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    imgBtn.addEventListener("click", () => fileInput.click());
+    fileInput.addEventListener("change", e => {
+      addFiles(e.target.files);
+      fileInput.value = "";
+    });
+
+    // Paste images
+    ta.addEventListener("paste", e => {
+      const items = e.clipboardData && e.clipboardData.items;
+      if (!items) return;
+      const files = [];
+      for (const it of items){
+        if (it.type && it.type.startsWith("image/")){
+          const f = it.getAsFile();
+          if (f) files.push(f);
+        }
+      }
+      if (files.length){
+        e.preventDefault();
+        addFiles(files);
+      }
+    });
+
+    // Drag & drop onto composer
+    ["dragenter","dragover"].forEach(ev => compBox.addEventListener(ev, e => {
+      e.preventDefault();
+      compBox.classList.add("dragover");
+    }));
+    ["dragleave","drop"].forEach(ev => compBox.addEventListener(ev, e => {
+      e.preventDefault();
+      compBox.classList.remove("dragover");
+    }));
+    compBox.addEventListener("drop", e => {
+      if (e.dataTransfer && e.dataTransfer.files) addFiles(e.dataTransfer.files);
+    });
+
+    /* ---------- TTS ---------- */
+    let ttsEnabled = false;
+    let currentUtterance = null;
+
+    function speakText(text){
+      if (!ttsEnabled || !("speechSynthesis" in window)) return;
+      if (!text) return;
+      try { window.speechSynthesis.cancel(); } catch(_){}
+      const clean = String(text).replace(/```[\s\S]*?```/g, " code block ").replace(/`([^`]+)`/g, "$1").replace(/\[([^\]]+)\]\([^)]+\)/g, "$1").replace(/\[(\d+)\]/g, "").replace(/[*_#>]/g, "").replace(/\s+/g, " ").trim();
+      if (!clean) return;
+      const u = new SpeechSynthesisUtterance(clean.slice(0, 1500));
+      u.rate = 1.05; u.pitch = 1.0; u.volume = 1.0;
+      u.onend = () => { currentUtterance = null; };
+      currentUtterance = u;
+      try { window.speechSynthesis.speak(u); } catch(_){}
+    }
+    function stopSpeaking(){
+      if ("speechSynthesis" in window){ try { window.speechSynthesis.cancel(); } catch(_){} }
+      currentUtterance = null;
+    }
+    ttsToggle.addEventListener("click", () => {
+      ttsEnabled = !ttsEnabled;
+      ttsToggle.classList.toggle("active", ttsEnabled);
+      if (!ttsEnabled) stopSpeaking();
+    });
+
+    /* ---------- Speech recognition ---------- */
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    let recognition = null, isListening = false, finalTranscript = "", autoSendTimer = null;
+
+    if (!SR){
+      micBtn.disabled = true;
+      micBtn.style.opacity = ".4";
+    } else {
+      recognition = new SR();
+      recognition.lang = "en-US";
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.onstart = () => {
+        isListening = true;
+        micBtn.classList.add("recording");
+        compBox.classList.add("listening");
+        listeningBar.classList.add("on");
+        liveTranscript.textContent = "say something";
+      };
+      recognition.onresult = (event) => {
+        let interim = "", final = "";
+        for (let i = event.resultIndex; i < event.results.length; i++){
+          const r = event.results[i];
+          if (r.isFinal) final += r[0].transcript;
+          else interim += r[0].transcript;
+        }
+        if (final) finalTranscript += final;
+        const display = (finalTranscript + interim).trim();
+        liveTranscript.textContent = display || "say something";
+        ta.value = display;
+        autoGrow(); setSend();
+        if (autoSendTimer) clearTimeout(autoSendTimer);
+        autoSendTimer = setTimeout(() => { if (isListening && ta.value.trim().length > 0) stopListening(true); }, 1400);
+      };
+      recognition.onerror = (event) => {
+        if (event.error === "not-allowed" || event.error === "service-not-allowed"){
+          liveTranscript.textContent = "microphone blocked";
+          setTimeout(() => stopListening(false), 1500);
+        } else if (event.error === "no-speech"){
+          setTimeout(() => stopListening(false), 1000);
+        } else stopListening(false);
+      };
+      recognition.onend = () => { if (isListening){ try { recognition.start(); } catch(_){ stopListening(false); } } };
+    }
+
+    function startListening(){
+      if (!SR || isListening) return;
+      finalTranscript = ta.value.trim();
+      if (finalTranscript) finalTranscript += " ";
+      try { recognition.start(); } catch(_){}
+    }
+    function stopListening(sendIt){
+      if (!SR) return;
+      isListening = false;
+      if (autoSendTimer){ clearTimeout(autoSendTimer); autoSendTimer = null; }
+      try { recognition.stop(); } catch(_){}
+      micBtn.classList.remove("recording");
+      compBox.classList.remove("listening");
+      listeningBar.classList.remove("on");
+      const text = ta.value.trim();
+      if (sendIt && text && !streaming) setTimeout(() => send(), 100);
+    }
+    micBtn.addEventListener("click", () => { if (isListening) stopListening(true); else startListening(); });
+    stopMicBtn.addEventListener("click", () => stopListening(true));
+
+    /* ---------- DETECTORS ---------- */
+    function detectGreeting(raw){
+      const s = String(raw).trim().toLowerCase().replace(/[?!.,]+$/g, "").trim();
+      if (s.length > 30) return false;
+      return /^(hi|hii+|hey+|hello+|helo|yo|sup|hiya|howdy|heya|hai|hallo|hola|bonjour|ciao|aloha)$/.test(s) ||
+             /^(hi|hey|hello|yo|sup|hiya|howdy)\s+(there|akitta|ai|buddy|friend|mate)$/.test(s) ||
+             /^good\s+(morning|afternoon|evening|day)$/.test(s) ||
+             /^(greetings|salutations|what'?s up|whats up|wassup|how are you|how'?s it going|how are you doing)$/.test(s);
+    }
+    const GREETING_REPLY = "Hi, how can I assist you today?";
+
+    function detectSmallTalk(raw){
+      const s = String(raw).trim().toLowerCase().replace(/[?!.]+$/g, "").trim();
+      if (!s) return "Could you say a bit more?";
+      if (/^[?!.,;:]+$/.test(s)) return "Could you say a bit more?";
+      if (s.length <= 2) return null;
+      if (/^(i (have|got|had) (a|an|one|some)?\s*(big|small|quick|serious|dumb|silly|random)?\s*(question|thing|idea|thought)s?)\b/.test(s)) return "Ready — what's your question?";
+      if (/^(i('m| am) (going to|gonna|about to) ask)\b/.test(s)) return "Go ahead, I'm listening.";
+      if (/^(can i ask|may i ask|let me ask)\b/.test(s)) return "Of course — ask away.";
+      if (/^(thanks|thank you|thx|ty|cheers|appreciate it|appreciate that)$/.test(s)) return "Anytime. Anything else?";
+      if (/^(huh|what|why|how)\?*$/.test(s) && s.length <= 5) return "Could you say a bit more?";
+      return null;
+    }
+
+    const ACK_REPLIES = {
+      "ok":"Cool. What's next?","okay":"Cool. What's next?","k":"Cool. What's next?",
+      "cool":"Glad you think so.","nice":"Glad you think so.","great":"Glad you think so.",
+      "sure":"Great — what would you like to know?","yep":"Cool.","yeah":"Cool.","yup":"Cool.",
+      "no":"Alright.","nope":"Alright.","nah":"Alright.","yes":"Nice.","maybe":"Fair enough.",
+      "hmm":"Take your time.","hm":"Take your time.","hmmm":"Take your time.",
+      "interesting":"Glad you find it so.","wow":"Right?","oh":"Yeah.","ah":"Yeah.",
+      "alright":"Cool.","fine":"Alright.","got it":"Cool.","i see":"Cool."
+    };
+
+    /* ---------- IMAGE REQUEST (much stricter now) ---------- */
+    function detectImageRequest(raw){
+      const t = String(raw).trim().toLowerCase();
+      if (!t) return null;
+
+      // Strong image verbs (draw/paint/sketch/illustrate are unambiguous)
+      const strongVerbs = /\b(draw|paint|sketch|illustrate)\b/;
+      // Generic verbs need an explicit image noun to count
+      const genericVerbs = /\b(generate|create|make|design|produce|render|show me|give me)\b/;
+      // Explicit image nouns
+      const imageNouns = /\b(image|picture|pic|photo|photograph|drawing|painting|art|artwork|illustration|render|wallpaper|logo|icon|poster|portrait|scene|visual)\b/;
+      // Code-related words — if present, bias heavily toward code
+      const codeWords = /\b(code|function|script|program|class|method|algorithm|snippet|module|library|api|app|game|bot|server|component|parser|compiler|interpreter|regex|query|loop|recursion|sort|search|login|signup|calculator|todo)\b/;
+      const langWords = /\b(javascript|typescript|python|java|c\+\+|cpp|c#|csharp|go|golang|rust|ruby|php|swift|kotlin|dart|scala|lua|perl|haskell|sql|bash|shell|powershell|html|css|react|vue|svelte|assembly|node|node\.js)\b/;
+
+      // If the request looks like code, return null (let the code detector handle it)
+      if ((codeWords.test(t) || langWords.test(t)) && !imageNouns.test(t)){
+        return null;
+      }
+
+      // Must have a strong image verb OR (a generic verb AND an image noun)
+      if (!strongVerbs.test(t) && !(genericVerbs.test(t) && imageNouns.test(t))){
+        return null;
+      }
+
+      // Subject extraction
+      const drawM = t.match(/^(?:please\s+)?(?:can you\s+|could you\s+)?(?:draw|paint|sketch|illustrate|render|generate|create|make|design|show me|give me)\s+(?:me\s+)?(?:an?\s+)?(?:image|picture|pic|photo|drawing|painting|art|illustration|render|logo|icon|poster|portrait|scene|visual)?\s*(?:of|showing|with|depicting)?\s*(.+)$/i);
+      if (drawM){
+        const s = drawM[1].trim();
+        if (s && s.length > 1) return s;
+      }
+      const ofM = t.match(/\b(?:image|picture|pic|photo|photograph|drawing|painting|art|artwork|illustration|render|poster|portrait)\s+(?:of|showing|with|depicting|for)\s+(.+)$/i);
+      if (ofM){
+        const s = ofM[1].trim();
+        if (s && s.length > 1) return s;
+      }
+      if (strongVerbs.test(t)){
+        const m = t.match(/\b(?:draw|paint|sketch|illustrate)\s+(?:me\s+)?(?:an?\s+)?(.+)$/i);
+        if (m && m[1].trim().length > 1) return m[1].trim();
+        return "__NEED_SUBJECT__";
+      }
+      if (genericVerbs.test(t) && imageNouns.test(t)) return "__NEED_SUBJECT__";
+      return null;
+    }
+
+    function detectMath(raw){
+      let s = String(raw).trim().toLowerCase().replace(/[?!.]+$/g, "").trim();
+      s = s.replace(/^(what(?:'s| is)|whats|calculate|compute|solve|evaluate|answer|how much is|how many is|tell me|work out|find)\s+/i, "").trim();
+      s = s.replace(/\s*=\s*\??$/,"").trim();
+      const sqrtM = s.match(/^(?:the\s+)?(?:square root of|sqrt)\s*\(?\s*(\d+(?:\.\d+)?)\s*\)?$/);
+      if (sqrtM){ const r = Math.sqrt(parseFloat(sqrtM[1])); if (isFinite(r)) return { result: Math.round(r*1e10)/1e10 }; }
+      s = s.replace(/\bplus\b/g,"+").replace(/\bminus\b/g,"-")
+           .replace(/\bmultiplied by\b/g,"*").replace(/\bmultiply by\b/g,"*").replace(/\bmultiply\b/g,"*")
+           .replace(/\btimes\b/g,"*").replace(/\bdivided by\b/g,"/").replace(/\bdivide by\b/g,"/")
+           .replace(/\bdivide\b/g,"/").replace(/\bover\b/g,"/")
+           .replace(/\bto the power of\b/g,"^").replace(/\bpower of\b/g,"^")
+           .replace(/\bmodulo\b/g,"%").replace(/\bmod\b/g,"%")
+           .replace(/\bsquared\b/g,"^2").replace(/\bcubed\b/g,"^3");
+      s = s.replace(/\s+/g," ").trim();
+      if (!/\d/.test(s) || !/[+\-*/^%]/.test(s) || !/^[\d\s+\-*/^%().]+$/.test(s)) return null;
+      if (/^\d{4}\s*-\s*\d{4}$/.test(s) || /^\d{1,2}\/\d{1,2}(\/\d{2,4})?$/.test(s)) return null;
+      try {
+        const val = Function('"use strict";return (' + s.replace(/\^/g,"**") + ')')();
+        if (typeof val !== "number" || !isFinite(val)) return null;
+        return { result: Math.round(val * 1e10) / 1e10 };
+      } catch(_){ return null; }
+    }
+
+    function detectCapital(raw){
+      let s = String(raw).trim().replace(/[?!.]+$/g, "").trim();
+      s = s.replace(/^(?:what(?:'s| is)|where is|where's)\s+/i, "").trim();
+      s = s.replace(/^(?:the\s+)/i, "").trim();
+      let m = s.match(/^capital(?:\s+city)?\s+of\s+(.+)$/i);
+      if (m) return m[1].trim().replace(/^(?:a\s+|an\s+|the\s+)/i,"").replace(/[?!.]+$/g,"").trim();
+      m = s.match(/^(.+?)(?:'s|s')\s+capital(?:\s+city)?$/i);
+      if (m) return m[1].trim().replace(/^(?:a\s+|an\s+|the\s+)/i,"").replace(/[?!.]+$/g,"").trim();
+      return null;
+    }
+
+    const LANG_ALIASES = {
+      "js":"javascript","javascript":"javascript","node":"javascript","nodejs":"javascript","node.js":"javascript",
+      "ts":"typescript","typescript":"typescript","py":"python","python":"python","python3":"python",
+      "java":"java","c":"c","c++":"cpp","cpp":"cpp","cplusplus":"cpp","c#":"csharp","csharp":"csharp",
+      "go":"go","golang":"go","rust":"rust","rs":"rust","rb":"ruby","ruby":"ruby","php":"php",
+      "swift":"swift","kotlin":"kotlin","kt":"kotlin","dart":"dart","scala":"scala","r":"r","matlab":"matlab",
+      "lua":"lua","perl":"perl","haskell":"haskell","elixir":"elixir","erlang":"erlang",
+      "sql":"sql","mysql":"sql","postgres":"sql","postgresql":"sql","sqlite":"sql",
+      "bash":"bash","sh":"bash","shell":"bash","zsh":"bash","powershell":"powershell","ps1":"powershell",
+      "html":"html","css":"css","scss":"scss","sass":"sass","react":"jsx","jsx":"jsx","tsx":"tsx","vue":"vue","svelte":"svelte",
+      "json":"json","yaml":"yaml","yml":"yaml","xml":"xml","toml":"toml","asm":"asm","assembly":"asm",
+      "solidity":"solidity","zig":"zig","nim":"nim","pytorch":"python","tensorflow":"python","numpy":"python",
+      "pandas":"python","opencv":"python","sklearn":"python","keras":"python"
+    };
+
+    function detectCodeRequest(raw){
+      const t = String(raw).toLowerCase();
+      const v = /\b(write|make|create|build|generate|show|give|code|implement|fix|debug|refactor|explain|convert|translate|optimi[sz]e|rewrite)\b/;
+      const n = /\b(code|function|script|program|class|method|algorithm|snippet|implementation|module|library|api|app|application|game|bot|server|client|component|hook|handler|parser|compiler|interpreter|regex|query|loop|recursion|sort|search|test|unit test|login|signup|calculator|todo)\b/;
+      const w = /\b(javascript|typescript|python|java|c\+\+|cpp|c#|csharp|go|golang|rust|ruby|php|swift|kotlin|dart|scala|lua|perl|haskell|sql|bash|shell|powershell|html|css|react|vue|svelte|assembly|asm|solidity|zig|matlab|node|node\.js|opencv|pytorch|tensorflow|numpy|pandas|sklearn|keras)\b/i;
+      const m = /\b(in|using|with|via|for)\s+(javascript|typescript|python|java|c\+\+|cpp|c#|csharp|go|golang|rust|ruby|php|swift|kotlin|dart|scala|lua|perl|haskell|sql|bash|shell|powershell|html|css|react|vue|svelte|assembly|asm|solidity|zig|matlab|node|node\.js|opencv|pytorch|tensorflow)\b/i;
+      const p = /^(javascript|typescript|python|java|c\+\+|cpp|c#|csharp|go|golang|rust|ruby|php|swift|kotlin|dart|scala|lua|perl|haskell|sql|bash|shell|powershell|html|css|react|vue|svelte|assembly|asm|solidity|zig|matlab|node|node\.js)\s+(code|function|script|program|class|snippet|example|implementation|algorithm|module)\b/i;
+      const wm = /\b(write|make|create|build|generate|show|give|code|implement)\b[\s\S]*?\b(in|using|with)\s+([a-z0-9+#.]+)/i;
+      if (v.test(t) && n.test(t)) return true;
+      if (m.test(t) && v.test(t)) return true;
+      if (p.test(t)) return true;
+      if (wm && wm[3] && LANG_ALIASES[wm[3].toLowerCase()]) return true;
+      if (/\bhow (to|do i|can i)\b/.test(t) && w.test(t)) return true;
+      if (m.test(t) && /\b(what is|what's|explain|show me|example)\b/i.test(t)) return true;
+      if (/\b(neural network|deep learning|machine learning|ai model|train a|tensorflow|pytorch|keras|sklearn|opencv)\b/i.test(t)) {
+        if (v.test(t) || /\b(how|example|tutorial|guide)\b/i.test(t)) return true;
+      }
+      if (/\b(build|make|create|write|code)\b[\s\S]*\b(ai|a\.i\.|artificial intelligence|chatbot|language model|llm|gpt|neural net)\b/i.test(t)) return true;
+      return false;
+    }
+    function detectLanguage(raw){
+      const t = String(raw).toLowerCase();
+      const m1 = t.match(/\b(?:in|using|with|via)\s+([a-z0-9+#.]+)/);
+      if (m1 && LANG_ALIASES[m1[1]]) return LANG_ALIASES[m1[1]];
+      for (const [alias, lang] of Object.entries(LANG_ALIASES)){
+        const re = new RegExp("\\b" + alias.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\b", "i");
+        if (re.test(t)) return lang;
+      }
+      return null;
+    }
+
+    function wantsSearch(raw){
+      const t = String(raw).toLowerCase();
+      return /\b(search|google|look ?up|find online|on the (web|internet)|browse|latest|current|today|right now|news about|recent|2024|2025|2026|this year|this week|up.?to.?date|what.?s new)\b/.test(t);
+    }
+
+    function getSystemPrompts(){
+      const pro = isPro();
+      const vision = "\n\nIMPORTANT: You may receive image attachments. Analyze them carefully and describe what you see accurately. If the user asks about the image, answer based on what's actually in it.";
+      if (pro){
+        return {
+          direct: "You are Akitta **Pro** — a highly capable reasoning assistant. Think carefully before answering.\n\nRules:\n1. Think step by step internally, output only the polished final answer.\n2. Be thorough.\n3. For complex topics, use markdown headings and bullets.\n4. For code, produce production-quality code.\n5. If you need real-time info, output EXACTLY [SEARCH] on its own line.\n6. Never mention being a language model." + vision,
+          search: "You are Akitta **Pro**, a deeply analytical assistant. Use search results to write a thorough, well-structured answer. Use markdown. Cite as [1], [2]." + vision,
+          code: "You are Akitta **Pro**, a senior software engineer. You write production-grade code in ANY language.\n\nRules: 1) ``` fences with correct language tag. 2) Complete runnable code with error handling. 3) Comments. 4) Add **Time complexity**, **Space complexity**, **Edge cases**. 5) Never say you cannot write code."
+        };
+      }
+      return {
+        direct: "You are Akitta, a knowledgeable AI assistant. Answer directly and accurately from your own knowledge.\n\nRules:\n1. Lead with the direct answer, then 1-3 sentences of context. Use markdown.\n2. Casual chatter — respond naturally and briefly.\n3. If you genuinely don't know or need real-time info, reply with EXACTLY [SEARCH] on its own line.\n4. Never mention being a language model." + vision,
+        search: "You are Akitta. Use the search results to answer accurately and concisely. Cite as [1], [2]. Use markdown. Never invent facts." + vision,
+        code: "You are Akitta, an expert programmer. Rules: 1) ``` fences with language tag. 2) Complete runnable code. 3) Brief comments. 4) 2-4 sentences of explanation after. 5) Never say you cannot write code."
+      };
+    }
+
+    function extractSubject(q){
+      return q.replace(/^(hey |hi |hello |please |ok |okay |so |um |well |can you |could you |would you |do you know )+/i,"")
+              .replace(/^(what(?:'s| is| are)|who(?:'s| is| are)|when (?:did|was|is|were|does)|where (?:is|was|are)|why (?:is|was|are|does|do|did)|how (?:does|do|did|is|are|many|much)|tell me about|explain|define|describe|search for|look up|google)\s+/i,"")
+              .replace(/^(a |an |the )/i,"").replace(/[?!.]+$/g,"").trim();
+    }
+
+    async function searchWikipedia(subject){
+      try {
+        const url = "https://en.wikipedia.org/w/api.php?action=query&list=search&format=json&origin=*&srlimit=2&srsearch=" + encodeURIComponent(subject);
+        const res = await fetch(url); if (!res.ok) return [];
+        const data = await res.json();
+        const hits = (data.query && data.query.search) || [];
+        if (!hits.length) return [];
+        const title = hits[0].title;
+        const sumRes = await fetch("https://en.wikipedia.org/api/rest_v1/page/summary/" + encodeURIComponent(title));
+        if (!sumRes.ok) return [];
+        const sum = await sumRes.json();
+        if (!sum.extract || sum.extract.length < 40) return [];
+        return [{ source: "Wikipedia", title: sum.title, extract: sum.extract,
+          url: (sum.content_urls && sum.content_urls.desktop && sum.content_urls.desktop.page) || ("https://en.wikipedia.org/wiki/" + encodeURIComponent(sum.title)) }];
+      } catch(_){ return []; }
+    }
+    async function searchDDG(subject){
+      try {
+        const url = "https://api.duckduckgo.com/?q=" + encodeURIComponent(subject) + "&format=json&no_html=1&skip_disambig=1";
+        const res = await fetch(url); if (!res.ok) return [];
+        const data = await res.json();
+        const out = [];
+        if (data.Answer && typeof data.Answer === "string" && data.Answer.length > 2){
+          out.push({ source:"DuckDuckGo", title:"Direct answer", extract: data.Answer, url: "https://duckduckgo.com/?q=" + encodeURIComponent(subject) });
+        }
+        if (data.AbstractText && data.AbstractText.length > 40){
+          out.push({ source:"DuckDuckGo", title: data.Heading || subject, extract: data.AbstractText, url: data.AbstractURL || "https://duckduckgo.com/?q=" + encodeURIComponent(subject) });
+        }
+        return out;
+      } catch(_){ return []; }
+    }
+    async function searchWeb(query){
+      const subject = extractSubject(query) || query;
+      const [wiki, ddg] = await Promise.all([searchWikipedia(subject), searchDDG(subject)]);
+      const seen = new Set(), merged = [];
+      for (const r of ddg.concat(wiki)){ const k = r.title.toLowerCase().trim(); if (seen.has(k)) continue; seen.add(k); merged.push(r); }
+      return merged.slice(0, 3);
+    }
+
+    const FASTER_TIMEOUT = 25000;
+
+    async function streamPOST(messages, onToken, opts){
+      opts = opts || {};
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), opts.timeout || FASTER_TIMEOUT);
+      try {
+        const res = await fetch("https://text.pollinations.ai/openai", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ model: "openai", messages, stream: true, temperature: opts.temperature != null ? opts.temperature : 0.4 }),
+          signal: controller.signal
+        });
+        if (!res.ok || !res.body) throw new Error("POST " + res.status);
+        const reader = res.body.getReader(); const decoder = new TextDecoder();
+        let buffer = "", full = "";
+        while (true){
+          const { value, done } = await reader.read(); if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n"); buffer = lines.pop() || "";
+          for (const raw of lines){
+            const line = raw.trim(); if (!line || !line.startsWith("data:")) continue;
+            const p = line.slice(5).trim(); if (p === "[DONE]") continue;
+            try {
+              const j = JSON.parse(p);
+              const d = j.choices && j.choices[0] && j.choices[0].delta;
+              if (d && d.content){ full += d.content; onToken(full); }
+            } catch(_){}
+          }
+        }
+        if (!full || full.trim().length < 1) throw new Error("empty POST");
+        return full;
+      } finally { clearTimeout(timeout); }
+    }
+
+    async function streamGET(messages, onToken, opts){
+      opts = opts || {};
+      const sysMsg = messages.find(m => m.role === "system");
+      const convo = messages.filter(m => m.role !== "system").slice(-4);
+      let prompt = "";
+      if (sysMsg) prompt += sysMsg.content.slice(0, 900) + "\n\n---\n\n";
+      for (const m of convo){
+        if (m.role === "user"){
+          if (typeof m.content === "string") prompt += m.content + "\n";
+          else if (Array.isArray(m.content)){
+            for (const part of m.content){
+              if (part.type === "text") prompt += part.text + "\n";
+              else if (part.type === "image_url") prompt += "[image attached]\n";
+            }
+          }
+        } else if (m.role === "assistant" && typeof m.content === "string"){
+          prompt += m.content.slice(0, 500) + "\n\n";
+        }
+      }
+      prompt = prompt.trim();
+
+      let lastErr = null;
+      for (let attempt = 0; attempt < 2; attempt++){
+        try {
+          const url = "https://text.pollinations.ai/" + encodeURIComponent(prompt)
+            + "?model=openai&seed=" + Math.floor(Math.random() * 999999);
+          const res = await fetch(url, { mode: "cors", cache: "no-store" });
+          if (!res.ok) throw new Error("GET " + res.status);
+          const text = await res.text();
+          if (!text || text.length < 1) throw new Error("empty GET");
+          if (/^\s*(error|too many requests|rate limit)/i.test(text)) throw new Error("rate-limited");
+          const tokens = text.split(/(\s+)/);
+          let built = "";
+          for (let i = 0; i < tokens.length; i++){
+            built += tokens[i];
+            onToken(built);
+            if (i % 8 === 0) await new Promise(r => setTimeout(r, 2));
+          }
+          return text;
+        } catch(e){
+          lastErr = e;
+          if (attempt < 1) await new Promise(r => setTimeout(r, 400));
+        }
+      }
+      throw lastErr || new Error("GET failed");
+    }
+
+    async function streamAI(messages, onToken, opts){
+      const errors = [];
+      try { return await streamPOST(messages, onToken, opts); }
+      catch(e){ errors.push("POST: " + e.message); }
+      try { return await streamGET(messages, onToken, opts); }
+      catch(e){ errors.push("GET: " + e.message); }
+      throw new Error(errors.join(" | "));
+    }
+
+    const esc = s => String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+    const KEYWORDS = {
+      javascript:["const","let","var","function","return","if","else","for","while","do","switch","case","break","continue","class","extends","new","this","super","import","export","from","default","async","await","try","catch","finally","throw","typeof","instanceof","in","of","delete","void","yield","null","undefined","true","false","static","get","set"],
+      typescript:["const","let","var","function","return","if","else","for","while","class","extends","new","this","import","export","from","default","async","await","try","catch","finally","throw","interface","type","enum","implements","private","public","protected","readonly","abstract","as","namespace","declare","null","undefined","true","false"],
+      python:["def","return","if","elif","else","for","while","class","import","from","as","try","except","finally","raise","with","lambda","yield","global","nonlocal","pass","break","continue","and","or","not","in","is","None","True","False","async","await","self"],
+      java:["public","private","protected","static","final","abstract","class","interface","extends","implements","new","return","if","else","for","while","do","switch","case","break","continue","try","catch","finally","throw","throws","import","package","this","super","void","int","long","short","byte","char","boolean","float","double","String","null","true","false","enum"],
+      cpp:["include","define","using","namespace","class","struct","public","private","protected","virtual","static","const","inline","template","typename","return","if","else","for","while","do","switch","case","break","continue","try","catch","throw","new","delete","this","void","int","long","short","char","bool","float","double","auto","nullptr","true","false","std","cout","cin","endl"],
+      c:["include","define","int","long","short","char","float","double","void","struct","union","enum","typedef","static","extern","const","return","if","else","for","while","do","switch","case","break","continue","goto","sizeof","NULL","true","false"],
+      csharp:["using","namespace","class","struct","interface","public","private","protected","internal","static","readonly","const","virtual","override","abstract","return","if","else","for","foreach","while","do","switch","case","break","continue","try","catch","finally","throw","new","this","base","void","int","long","string","object","var","null","true","false","async","await"],
+      go:["package","import","func","var","const","type","struct","interface","map","chan","go","defer","return","if","else","for","range","switch","case","break","continue","select","nil","true","false","make","new","len","cap","append"],
+      rust:["fn","let","mut","const","static","struct","enum","trait","impl","pub","use","mod","crate","super","self","return","if","else","for","while","loop","match","break","continue","move","ref","as","where","unsafe","async","await","dyn","true","false","Some","None","Ok","Err"],
+      ruby:["def","end","class","module","if","elsif","else","unless","while","until","for","do","begin","rescue","ensure","raise","return","yield","require","include","new","self","nil","true","false","and","or","not","then","case","when","lambda","proc"],
+      php:["function","return","if","else","elseif","for","foreach","while","do","switch","case","break","continue","class","interface","trait","extends","implements","public","private","protected","static","const","new","this","null","true","false","array","as","echo","print"],
+      swift:["func","let","var","class","struct","enum","protocol","extension","import","return","if","else","for","while","repeat","switch","case","break","continue","try","catch","throw","throws","guard","defer","init","self","super","nil","true","false","public","private","internal","static","final"],
+      kotlin:["fun","val","var","class","object","interface","data","enum","sealed","when","if","else","for","while","do","return","break","continue","try","catch","finally","throw","import","package","this","super","null","true","false","private","public","protected","internal","open","abstract","override"],
+      lua:["function","end","if","then","else","elseif","for","while","do","repeat","until","local","return","break","goto","in","pairs","ipairs","nil","true","false","and","or","not","require","print"],
+      sql:["SELECT","FROM","WHERE","INSERT","INTO","VALUES","UPDATE","SET","DELETE","CREATE","TABLE","ALTER","DROP","INDEX","VIEW","JOIN","LEFT","RIGHT","INNER","OUTER","ON","AS","AND","OR","NOT","NULL","IS","IN","LIKE","BETWEEN","ORDER","BY","GROUP","HAVING","LIMIT","DISTINCT","UNION","ALL","CASE","WHEN","THEN","ELSE","END"],
+      bash:["if","then","else","elif","fi","for","while","do","done","case","esac","function","return","exit","echo","printf","read","local","export","source","alias","unset","set","shift","test","true","false","in"],
+      html:["DOCTYPE","html","head","body","div","span","p","a","img","ul","ol","li","table","tr","td","th","form","input","button","script","style","link","meta","title","header","footer","nav","section","article","aside","main","h1","h2","h3","h4","h5","h6","br","hr","strong","em","code","pre"],
+      css:["color","background","margin","padding","border","font","display","position","top","left","right","bottom","width","height","flex","grid","align","justify","gap","transition","transform","animation","opacity","z-index","overflow","text-align","box-shadow","border-radius"],
+      jsx:["import","export","from","default","function","return","const","let","var","class","extends","this","if","else","for","while","new","await","async","try","catch","finally","throw","true","false","null","undefined","useState","useEffect"],
+      dart:["void","main","final","const","var","class","extends","implements","abstract","return","if","else","for","while","do","switch","case","break","continue","try","catch","finally","throw","new","this","super","null","true","false","import","export","async","await","Future","Stream","List","Map","Set","int","double","String","bool"]
+    };
+    function highlight(code, lang){
+      const safe = esc(code); const kw = KEYWORDS[lang];
+      let out = safe;
+      out = out.replace(/(`[^`]*`|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*')/g, m => '<span class="tok-str">' + m + '</span>');
+      out = out.replace(/(^|[^:"])(\/\/[^\n]*|#[^\n]*|--[^\n]*)/g, (m, p, c) => p + '<span class="tok-com">' + c + '</span>');
+      out = out.replace(/(\/\*[\s\S]*?\*\/)/g, '<span class="tok-com">$1</span>');
+      out = out.replace(/\b(0x[0-9a-fA-F]+|\d+\.?\d*([eE][+-]?\d+)?)\b/g, '<span class="tok-num">$1</span>');
+      if (kw){
+        const pattern = new RegExp("\\b(" + kw.map(k => k.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")).join("|") + ")\\b", "g");
+        out = out.replace(pattern, '<span class="tok-kw">$1</span>');
+      }
+      return out;
+    }
+    function inline(s){
+      s = esc(s);
+      s = s.replace(/`([^`]+)`/g, "<code>$1</code>");
+      s = s.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+      s = s.replace(/(^|[^*])\*([^*\n]+)\*/g, "$1<em>$2</em>");
+      s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+      s = s.replace(/\[(\d+)\]/g, '<sup class="src-ref">$1</sup>');
+      return s;
+    }
+    function codeBlock(lang, buf){
+      const l = (lang || "code").trim().toLowerCase() || "code";
+      const display = l === "cpp" ? "C++" : l === "csharp" ? "C#" : l;
+      return '<div class="code"><div class="code-top">' +
+        '<span class="code-lang">' + esc(display) + '</span>' +
+        '<div class="code-actions">' +
+          '<button class="code-save" data-code="' + encodeURIComponent(buf) + '" data-lang="' + esc(l) + '">Save</button>' +
+          '<button class="code-copy" data-code="' + encodeURIComponent(buf) + '">Copy</button>' +
+        '</div></div>' +
+        '<pre><code>' + highlight(buf, l) + '</code></pre></div>';
+    }
+    function md(text){
+      const lines = String(text).split("\n");
+      let out = "", inCode = false, lang = "", buf = "", inList = false;
+      const closeList = () => { if (inList){ out += "</ul>"; inList = false; } };
+      for (const line of lines){
+        if (/^```/.test(line)){
+          if (!inCode){ closeList(); inCode = true; lang = line.slice(3).trim(); buf = ""; }
+          else { inCode = false; out += codeBlock(lang, buf); }
+          continue;
+        }
+        if (inCode){ buf += (buf ? "\n" : "") + line; continue; }
+        if (/^\s*[-*]\s+/.test(line)){
+          if (!inList){ out += "<ul>"; inList = true; }
+          out += "<li>" + inline(line.replace(/^\s*[-*]\s+/, "")) + "</li>";
+          continue;
+        }
+        closeList();
+        if (line.trim() === "") continue;
+        if (/^###\s+/.test(line)){ out += "<h4>" + inline(line.slice(4)) + "</h4>"; continue; }
+        if (/^##\s+/.test(line)) { out += "<h3>" + inline(line.slice(3)) + "</h3>"; continue; }
+        if (/^#\s+/.test(line))  { out += "<h2>" + inline(line.slice(2)) + "</h2>"; continue; }
+        out += "<p>" + inline(line) + "</p>";
+      }
+      closeList();
+      if (inCode) out += codeBlock(lang, buf);
+      return out;
+    }
+
+    /* ---------- Language → file extension ---------- */
+    function langToExt(lang){
+      const map = {
+        javascript:"js", js:"js", node:"js", nodejs:"js",
+        typescript:"ts", ts:"ts",
+        python:"py", python3:"py", py:"py",
+        java:"java", c:"c", cpp:"cpp", "c++":"cpp", cplusplus:"cpp",
+        csharp:"cs", "c#":"cs",
+        go:"go", golang:"go", rust:"rs", rs:"rs",
+        ruby:"rb", rb:"rb", php:"php", swift:"swift",
+        kotlin:"kt", kt:"kt", dart:"dart", scala:"scala",
+        lua:"lua", perl:"pl", haskell:"hs", elixir:"ex", erlang:"erl",
+        sql:"sql", mysql:"sql", postgres:"sql", postgresql:"sql", sqlite:"sql",
+        bash:"sh", sh:"sh", shell:"sh", zsh:"sh",
+        powershell:"ps1", ps1:"ps1",
+        html:"html", css:"css", scss:"scss", sass:"sass",
+        jsx:"jsx", tsx:"tsx", react:"jsx", vue:"vue", svelte:"svelte",
+        json:"json", yaml:"yaml", yml:"yml", xml:"xml", toml:"toml",
+        asm:"asm", assembly:"asm", solidity:"sol", zig:"zig", nim:"nim",
+        r:"r", matlab:"m", markdown:"md", md:"md", text:"txt", txt:"txt"
+      };
+      return map[(lang || "").toLowerCase()] || "txt";
+    }
+
+    /* ---------- STATE ---------- */
+    const chats = [];
+    let currentId = null;
+    let streaming = false;
+
+    function newChat(){
+      const id = "c" + Date.now() + Math.random().toString(36).slice(2,6);
+      const chat = { id, title: "Welcome", msgs: [] };
+      chat.msgs.push({ role: "ai", content: WELCOME_TEXT, sources: [] });
+      chats.unshift(chat);
+      currentId = id;
+      renderSidebar();
+      renderStage();
+      try { ta.focus(); } catch(_){}
+      closeSidebarMobile();
+    }
+
+    function current(){ return chats.find(c => c.id === currentId); }
+
+    function renderSidebar(){
+      chatList.innerHTML = "";
+      chats.forEach(c => {
+        const el = document.createElement("div");
+        el.className = "sb-item" + (c.id === currentId ? " active" : "");
+        el.innerHTML = ICONS.chat + "<span>" + esc(c.title) + "</span>";
+        el.addEventListener("click", () => {
+          if (streaming) return;
+          currentId = c.id;
+          renderSidebar();
+          renderStage();
+          closeSidebarMobile();
+        });
+        chatList.appendChild(el);
+      });
+    }
+
+    function renderStage(){
+      stage.innerHTML = "";
+      const c = current();
+      if (!c || !c.msgs.length) return;
+      const wrap = document.createElement("div");
+      wrap.className = "stream";
+      c.msgs.forEach(m => wrap.appendChild(buildRow(m)));
+      stage.appendChild(wrap);
+      scrollDown();
+    }
+
+    function buildSources(sources){
+      if (!sources || !sources.length) return "";
+      const items = sources.map((s, i) => {
+        let d = ""; try { d = new URL(s.url).hostname.replace(/^www\./,""); } catch(_){}
+        return '<a class="source" href="' + esc(s.url) + '" target="_blank" rel="noopener">' +
+               '<span class="source-num">' + (i+1) + '</span>' +
+               '<span class="source-title">' + esc(s.title) + '</span>' +
+               (d ? '<span class="source-domain">' + esc(d) + '</span>' : '') + '</a>';
+      }).join("");
+      return '<div class="sources"><div class="sources-label">Sources</div><div class="sources-list">' + items + '</div></div>';
+    }
+
+    function buildRow(m){
+      const row = document.createElement("div");
+      row.className = "row " + (m.role === "user" ? "user" : "ai");
+      if (m.role === "user"){
+        const stack = document.createElement("div");
+        stack.className = "user-stack";
+        if (m.attachments && m.attachments.length){
+          m.attachments.forEach(a => {
+            const img = document.createElement("img");
+            img.className = "user-image";
+            img.src = a.dataUrl;
+            img.alt = a.name || "attachment";
+            stack.appendChild(img);
+          });
+        }
+        if (m.content && m.content.trim()){
+          const b = document.createElement("div");
+          b.className = "bubble-user";
+          b.textContent = m.content;
+          stack.appendChild(b);
+        }
+        row.appendChild(stack);
+        return row;
+      }
+      const pro = isPro();
+      if (pro) row.classList.add("is-pro");
+      const mark = document.createElement("div");
+      mark.className = "ai-mark";
+      mark.innerHTML = CAT_SVG;
+      const body = document.createElement("div");
+      body.className = "ai-body";
+      body.innerHTML =
+        '<div class="ai-name">Akitta' + (pro ? ' <span class="pro-badge">PRO</span>' : '') + '</div>' +
+        '<div class="ai-text"></div>' +
+        '<div class="ai-images"></div>' +
+        (m.sources && m.sources.length ? '<div class="ai-sources"></div>' : '') +
+        '<div class="acts">' +
+          '<button class="act" data-a="speak" title="Read aloud">' + ICONS.speak + '</button>' +
+          '<button class="act" data-a="copy" title="Copy">' + ICONS.copy + '</button>' +
+          '<button class="act" data-a="redo" title="Regenerate">' + ICONS.redo + '</button>' +
+        '</div>';
+      body.querySelector(".ai-text").innerHTML = md(m.content || "");
+      if (m.sources && m.sources.length) body.querySelector(".ai-sources").innerHTML = buildSources(m.sources);
+      if (m.images && m.images.length){
+        const cont = body.querySelector(".ai-images");
+        m.images.forEach(img => cont.appendChild(buildImageBlock(img)));
+      }
+      row.appendChild(mark);
+      row.appendChild(body);
+      body.querySelectorAll(".act").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const a = btn.dataset.a;
+          if (a === "copy"){
+            const txt = (m.content || "") + (m.images && m.images.length ? "\n\n" + m.images.map(i => i.url).join("\n") : "");
+            navigator.clipboard.writeText(txt).then(() => { btn.style.color="#5c7cfa"; setTimeout(()=>btn.style.color="",900); }).catch(()=>{});
+          } else if (a === "redo"){
+            regenerate();
+          } else if (a === "speak"){
+            if (currentUtterance){ stopSpeaking(); btn.style.color=""; }
+            else { speakText(m.content); btn.style.color="var(--pro)"; setTimeout(() => { const c=setInterval(()=>{ if(!currentUtterance){btn.style.color="";clearInterval(c);} },300); },100); }
+          }
+        });
+      });
+      wireCodeButtons(body);
+      return row;
+    }
+
+    function wireCodeButtons(root){
+      root.querySelectorAll(".code-copy").forEach(btn => {
+        btn.addEventListener("click", () => {
+          navigator.clipboard.writeText(decodeURIComponent(btn.dataset.code)).then(() => {
+            const o = btn.textContent; btn.textContent = "Copied";
+            setTimeout(() => btn.textContent = o, 1100);
+          }).catch(()=>{});
+        });
+      });
+      root.querySelectorAll(".code-save").forEach(btn => {
+        btn.addEventListener("click", () => {
+          try {
+            const code = decodeURIComponent(btn.dataset.code);
+            const lang = (btn.dataset.lang || "").toLowerCase();
+            const ext = langToExt(lang);
+            const blob = new Blob([code], { type: "text/plain;charset=utf-8" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "akitta-" + Date.now() + "." + ext;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 5000);
+            const o = btn.textContent;
+            btn.textContent = "Saved!";
+            setTimeout(() => btn.textContent = o, 1200);
+          } catch(e){
+            console.warn("save code failed:", e);
+          }
+        });
+      });
+    }
+
+    function buildImageBlock(img){
+      const wrap = document.createElement("div");
+      wrap.className = "img-wrap";
+      wrap.innerHTML =
+        '<div class="img-head">' +
+          '<span class="lbl">' + ICONS.image + ' generated image</span>' +
+          '<div class="img-actions">' +
+            '<button class="img-act" data-a="regen">' + ICONS.refresh + ' Regenerate</button>' +
+            '<button class="img-act" data-a="open">' + ICONS.open + ' Open</button>' +
+            '<button class="img-act" data-a="download">' + ICONS.download + ' Download</button>' +
+          '</div>' +
+        '</div>' +
+        '<div class="img-body"></div>';
+      const body = wrap.querySelector(".img-body");
+      const imageEl = document.createElement("img");
+      imageEl.alt = img.prompt || "generated image";
+      function freshUrl(){
+        const seed = Math.floor(Math.random() * 999999);
+        return "https://image.pollinations.ai/prompt/" + encodeURIComponent(img.prompt)
+          + "?width=" + (img.width || 1024) + "&height=" + (img.height || 1024)
+          + "&nologo=true&model=flux&seed=" + seed;
+      }
+      function load(){
+        body.innerHTML = '<div class="img-loading"><div class="img-loading-spin"></div><div class="img-loading-text"><b>Generating image…</b><span>This usually takes 5–15 seconds</span></div></div>';
+        if (imageEl.parentNode) imageEl.parentNode.removeChild(imageEl);
+        const src = freshUrl();
+        img.url = src;
+        const probe = new Image();
+        probe.onload = () => {
+          imageEl.src = src;
+          body.innerHTML = "";
+          body.appendChild(imageEl);
+          requestAnimationFrame(() => scrollDown());
+        };
+        probe.onerror = () => {
+          body.innerHTML = '<div class="img-loading"><div class="img-loading-text" style="color:#fca5a5"><b>Couldn\'t generate that image</b><span>Try again</span></div><button class="img-act" data-a="retry" style="background:var(--surface-3);padding:8px 14px;border-radius:8px;color:var(--text)">Try again</button></div>';
+          body.querySelector("[data-a=retry]").addEventListener("click", load);
+        };
+        probe.src = src;
+      }
+      wrap.querySelector("[data-a=regen]").addEventListener("click", load);
+      wrap.querySelector("[data-a=open]").addEventListener("click", () => { if (img.url) window.open(img.url, "_blank", "noopener"); });
+      wrap.querySelector("[data-a=download]").addEventListener("click", async () => {
+        if (!img.url) return;
+        try {
+          const r = await fetch(img.url, { mode: "cors" });
+          const blob = await r.blob();
+          const a = document.createElement("a");
+          const url = URL.createObjectURL(blob);
+          a.href = url; a.download = "akitta-" + Date.now() + ".jpg";
+          document.body.appendChild(a); a.click(); a.remove();
+          setTimeout(() => URL.revokeObjectURL(url), 5000);
+        } catch(_){ window.open(img.url, "_blank", "noopener"); }
+      });
+      load();
+      return wrap;
+    }
+
+    function scrollDown(){ requestAnimationFrame(() => { scroll.scrollTop = scroll.scrollHeight; }); }
+    function ensureStream(){
+      let w = stage.querySelector(".stream");
+      if (!w){ stage.innerHTML = ""; w = document.createElement("div"); w.className = "stream"; stage.appendChild(w); }
+      return w;
+    }
+    function autoGrow(){ ta.style.height = "auto"; ta.style.height = Math.min(ta.scrollHeight, 190) + "px"; }
+    function setSend(){
+      const hasText = ta.value.trim().length > 0;
+      const hasAttach = attachments.length > 0;
+      sendBtn.disabled = (!hasText && !hasAttach) || streaming;
+    }
+    function setStatus(row, text){
+      const n = row.querySelector(".ai-name");
+      if (n){
+        const pro = isPro();
+        n.innerHTML = 'Akitta' + (pro ? ' <span class="pro-badge">PRO</span>' : '') +
+          ' <span class="ai-status' + (pro ? ' is-pro' : '') + '"><span class="spinner"></span>' + esc(text) + '</span>';
+      }
+    }
+    function clearStatus(row){
+      const n = row.querySelector(".ai-name");
+      if (n){
+        const pro = isPro();
+        n.innerHTML = 'Akitta' + (pro ? ' <span class="pro-badge">PRO</span>' : '');
+      }
+    }
+    const wait = ms => new Promise(r => setTimeout(r, ms));
+
+    async function streamSimple(text, target, sources){
+      target.innerHTML = "";
+      const tokens = text.split(/(\s+)/);
+      let i = 0, built = "";
+      await new Promise(resolve => {
+        const tick = () => {
+          if (i >= tokens.length){ target.innerHTML = md(text); resolve(); return; }
+          const chunk = 2 + Math.floor(Math.random() * 2);
+          for (let k = 0; k < chunk && i < tokens.length; k++) built += tokens[i++];
+          target.innerHTML = md(built) + '<span class="caret"></span>';
+          scrollDown();
+          setTimeout(tick, 14);
+        };
+        tick();
+      });
+      return { text, sources: sources || [], images: [] };
+    }
+
+    // Build OpenAI-style message with optional image parts
+    function buildUserMessage(text, atts){
+      if (!atts || !atts.length) return text;
+      const parts = [];
+      if (text && text.trim()) parts.push({ type: "text", text: text });
+      atts.forEach(a => parts.push({ type: "image_url", image_url: { url: a.dataUrl } }));
+      return parts;
+    }
+
+    async function tryDirectAnswer(question, history, row, onToken, atts){
+      const P = getSystemPrompts();
+      const histSlice = history.slice(-4).map(m => {
+        if (m.role === "user" && m.attachments && m.attachments.length){
+          return { role: "user", content: buildUserMessage(m.content, m.attachments) };
+        }
+        return { role: m.role, content: m.content };
+      });
+      const messages = [
+        { role:"system", content: P.direct },
+        ...histSlice,
+        { role:"user", content: buildUserMessage(question, atts) }
+      ];
+      let full = "";
+      try { full = await streamAI(messages, onToken, { temperature: isPro() ? 0.55 : 0.4, timeout: 22000 }); }
+      catch (err){ return { ok: false, text: "" }; }
+      const trimmed = full.trim();
+      if (/^\[SEARCH\]/i.test(trimmed) || trimmed === "[SEARCH]") return { ok: false, text: "" };
+      if (!trimmed || trimmed.length < 2) return { ok: false, text: "" };
+      return { ok: true, text: full };
+    }
+
+    async function handleImage(prompt, row){
+      const target = row.querySelector(".ai-text");
+      const imgContainer = row.querySelector(".ai-images");
+      if (prompt === "__NEED_SUBJECT__"){
+        const s = "Sure — what should I draw? Give me a short description like *\"a red panda astronaut\"*.";
+        target.innerHTML = md(s);
+        return { text: s, images: [] };
+      }
+      let cleanPrompt = prompt.replace(/^(please\s+)?(can you\s+|could you\s+)?/i, "").replace(/[.!?]+$/g, "").trim();
+      if (!cleanPrompt) cleanPrompt = prompt;
+      setStatus(row, "Generating image…");
+      target.innerHTML = md("**" + cleanPrompt + "**\n\n_Generating your image — this usually takes 5–15 seconds…_");
+      const imgRecord = { prompt: cleanPrompt, width: 1024, height: 1024 };
+      imgContainer.appendChild(buildImageBlock(imgRecord));
+      scrollDown();
+      await wait(300);
+      clearStatus(row);
+      const replyText = "Here's **" + cleanPrompt + "**. You can download it, open it full-size, or ask me to regenerate.";
+      target.innerHTML = md(replyText);
+      return { text: replyText, images: [imgRecord] };
+    }
+
+    async function handleCapital(region, row){
+      const target = row.querySelector(".ai-text");
+      setStatus(row, "Looking up…");
+      target.innerHTML = '<div class="dots"><i></i><i></i><i></i></div>';
+      scrollDown();
+      let results = [], direct = null;
+      try {
+        const [ddg, wiki] = await Promise.all([searchDDG("capital of " + region), searchWikipedia(region)]);
+        const seen = new Set();
+        for (const r of ddg.concat(wiki)){ const k = r.title.toLowerCase().trim(); if (seen.has(k)) continue; seen.add(k); results.push(r); }
+        results = results.slice(0, 3);
+        for (const r of ddg){
+          if (r.title === "Direct answer" && r.extract){
+            const a = r.extract.trim();
+            if (a.length < 60 && !/[.!?;]/.test(a) && !/^https?:/i.test(a)){ direct = a; break; }
+          }
+        }
+      } catch(_){}
+      if (direct){
+        clearStatus(row);
+        return await streamSimple("The capital of **" + titleCase(region) + "** is **" + direct + "**.", target, results);
+      }
+      if (!results.length){
+        clearStatus(row);
+        const s = "Sorry — I couldn't find the capital of **" + titleCase(region) + "**.";
+        target.innerHTML = md(s); return { text: s, sources: [], images: [] };
+      }
+      const P = getSystemPrompts();
+      const ctx = results.map((r, i) => "[" + (i+1) + "] " + r.title + "\n" + r.extract).join("\n\n");
+      const messages = [
+        { role:"system", content: P.search },
+        { role:"user", content: 'The capital of "' + region + '" is? Answer with exactly: "The capital of ' + region + ' is **[city]**."\n\nSearch:\n' + ctx }
+      ];
+      setStatus(row, "Writing…"); target.innerHTML = "";
+      let text = "";
+      try { text = await streamAI(messages, full => { target.innerHTML = md(full) + '<span class="caret"></span>'; scrollDown(); }); }
+      catch(_){
+        text = "The capital of **" + titleCase(region) + "** is unclear from search.";
+        target.innerHTML = md(text);
+      }
+      clearStatus(row);
+      return { text, sources: results, images: [] };
+    }
+
+    async function handleCode(question, history, row){
+      const target = row.querySelector(".ai-text");
+      const lang = detectLanguage(question);
+      const label = lang ? titleCase(lang) : "best fit";
+      setStatus(row, "Writing " + label + " code…");
+      target.innerHTML = '<div class="dots"><i></i><i></i><i></i></div>';
+      scrollDown();
+      const P = getSystemPrompts();
+      const hint = lang ? "Use ```" + lang + " fences." : "Pick the most sensible language.";
+      const messages = [
+        { role:"system", content: P.code },
+        ...history.slice(-6).map(m => ({ role: m.role, content: m.content })),
+        { role:"user", content: question + "\n\n" + hint }
+      ];
+      target.innerHTML = "";
+      let text = "";
+      try {
+        text = await streamAI(messages, full => { target.innerHTML = md(full) + '<span class="caret"></span>'; scrollDown(); });
+      } catch(err){
+        clearStatus(row);
+        const s = "I couldn't reach the AI just now. Please try again.";
+        target.innerHTML = md(s);
+        return { text: s, sources: [], images: [] };
+      }
+      clearStatus(row);
+      return { text, sources: [], images: [] };
+    }
+
+    async function handleSearch(question, history, row, atts){
+      const target = row.querySelector(".ai-text");
+      setStatus(row, "Searching…");
+      target.innerHTML = '<div class="dots"><i></i><i></i><i></i></div>';
+      scrollDown();
+      let results = [];
+      try { results = await searchWeb(question); } catch(_){}
+      const P = getSystemPrompts();
+      if (!results.length){
+        clearStatus(row);
+        const histSlice = history.slice(-4).map(m => {
+          if (m.role === "user" && m.attachments && m.attachments.length){
+            return { role: "user", content: buildUserMessage(m.content, m.attachments) };
+          }
+          return { role: m.role, content: m.content };
+        });
+        const messages = [
+          { role:"system", content: P.direct },
+          ...histSlice,
+          { role:"user", content: buildUserMessage(question, atts) }
+        ];
+        let text = "";
+        try {
+          text = await streamAI(messages, full => { target.innerHTML = md(full) + '<span class="caret"></span>'; scrollDown(); });
+        } catch(_){
+          text = "I couldn't find anything on that and couldn't reach the AI either.";
+          target.innerHTML = md(text);
+        }
+        return { text, sources: [], images: [] };
+      }
+      const ctx = results.map((r, i) => "[" + (i+1) + "] " + r.title + " (source: " + r.source + ")\n" + r.extract).join("\n\n");
+      const messages = [
+        { role:"system", content: P.search },
+        ...history.slice(-4).map(m => {
+          if (m.role === "user" && m.attachments && m.attachments.length){
+            return { role: "user", content: buildUserMessage(m.content, m.attachments) };
+          }
+          return { role: m.role, content: m.content };
+        }),
+        { role:"user", content: "Question: " + question + "\n\nSearch results:\n" + ctx + "\n\nWrite a direct, accurate answer. Cite as [1], [2]." }
+      ];
+      target.innerHTML = "";
+      let text = "";
+      try {
+        text = await streamAI(messages, full => { target.innerHTML = md(full) + '<span class="caret"></span>'; scrollDown(); });
+      } catch(_){
+        clearStatus(row);
+        text = "I found these results but couldn't summarize them:\n\n" + results.map((r, i) => "**[" + (i+1) + "] " + r.title + "** — " + r.extract).join("\n\n");
+        return { text, sources: results, images: [] };
+      }
+      clearStatus(row);
+      return { text, sources: results, images: [] };
+    }
+
+    async function generateAnswer(question, history, row, atts){
+      // ★ If images are attached, skip all pattern detection — just go to AI
+      if (atts && atts.length){
+        const target = row.querySelector(".ai-text");
+        target.innerHTML = '<div class="dots"><i></i><i></i><i></i></div>';
+        scrollDown();
+        const direct = await tryDirectAnswer(question || "What's in this image?", history, row, (p) => {
+          target.innerHTML = md(p) + '<span class="caret"></span>';
+          scrollDown();
+        }, atts);
+        if (direct.ok){
+          target.innerHTML = md(direct.text);
+          return { text: direct.text, sources: [], images: [] };
+        }
+        // fallback to search-style prompt (without actual search)
+        const P = getSystemPrompts();
+        const histSlice = history.slice(-4).map(m => {
+          if (m.role === "user" && m.attachments && m.attachments.length){
+            return { role: "user", content: buildUserMessage(m.content, m.attachments) };
+          }
+          return { role: m.role, content: m.content };
+        });
+        const messages = [
+          { role:"system", content: P.direct },
+          ...histSlice,
+          { role:"user", content: buildUserMessage(question || "What's in this image?", atts) }
+        ];
+        let text = "";
+        try {
+          text = await streamAI(messages, full => { target.innerHTML = md(full) + '<span class="caret"></span>'; scrollDown(); });
+        } catch(_){
+          text = "I couldn't analyze that image. Please try again.";
+          target.innerHTML = md(text);
+        }
+        return { text, sources: [], images: [] };
+      }
+
+      // Regular text-only flow
+      if (detectGreeting(question)){
+        return await streamSimple(GREETING_REPLY, row.querySelector(".ai-text"), []);
+      }
+      const small = detectSmallTalk(question);
+      if (small){
+        return await streamSimple(small, row.querySelector(".ai-text"), []);
+      }
+      const ack = question.trim().toLowerCase().replace(/[?!.]+$/g, "").trim();
+      if (ACK_REPLIES[ack]){
+        return await streamSimple(ACK_REPLIES[ack], row.querySelector(".ai-text"), []);
+      }
+
+      const math = detectMath(question);
+      if (math){
+        return await streamSimple("The answer is **" + math.result + "**.", row.querySelector(".ai-text"), []);
+      }
+
+      const region = detectCapital(question);
+      if (region) return await handleCapital(region, row);
+
+      // ★ CODE FIRST — so "make a code of X" never becomes an image
+      if (detectCodeRequest(question)) return await handleCode(question, history, row);
+
+      // ★ THEN image — only if the request is clearly image-only
+      const imgPrompt = detectImageRequest(question);
+      if (imgPrompt) return await handleImage(imgPrompt, row);
+
+      if (wantsSearch(question)) return await handleSearch(question, history, row, atts);
+
+      row.querySelector(".ai-text").innerHTML = '<div class="dots"><i></i><i></i><i></i></div>';
+      scrollDown();
+      const direct = await tryDirectAnswer(question, history, row, (p) => {
+        row.querySelector(".ai-text").innerHTML = md(p) + '<span class="caret"></span>';
+        scrollDown();
+      }, atts);
+      if (direct.ok){
+        row.querySelector(".ai-text").innerHTML = md(direct.text);
+        return { text: direct.text, sources: [], images: [] };
+      }
+      return await handleSearch(question, history, row, atts);
+    }
+
+    async function send(){
+      const text = ta.value.trim();
+      const atts = attachments.slice();
+      if ((!text && !atts.length) || streaming) return;
+      const c = current(); if (!c) return;
+
+      ta.value = ""; autoGrow();
+      // clear attachments immediately so user sees they're sent
+      attachments.length = 0;
+      renderAttachments();
+      streaming = true; setSend();
+
+      try {
+        const userMsg = { role: "user", content: text, attachments: atts };
+        c.msgs.push(userMsg);
+        if (c.title === "Welcome"){
+          const titleSrc = text || "Image";
+          c.title = titleSrc.slice(0, 42) + (titleSrc.length > 42 ? "…" : "");
+          renderSidebar();
+        }
+        const wrap = ensureStream();
+        wrap.appendChild(buildRow(userMsg));
+        scrollDown();
+
+        const aiRow = buildRow({ role:"ai", content:"" });
+        wrap.appendChild(aiRow);
+        scrollDown();
+
+        const history = c.msgs.filter(m => (m.content && m.content.trim()) || (m.attachments && m.attachments.length));
+        const { text: reply, sources, images } = await generateAnswer(text, history.slice(0, -1), aiRow, atts);
+
+        const target = aiRow.querySelector(".ai-text");
+        target.innerHTML = md(reply);
+        if (sources && sources.length){
+          let sb = aiRow.querySelector(".ai-sources");
+          if (!sb){
+            sb = document.createElement("div");
+            sb.className = "ai-sources";
+            target.parentNode.insertBefore(sb, aiRow.querySelector(".acts"));
+          }
+          sb.innerHTML = buildSources(sources);
+        }
+        c.msgs.push({ role:"ai", content: reply, sources: sources || [], images: images || [] });
+        wireCodeButtons(aiRow);
+        if (ttsEnabled && reply) speakText(reply);
+      } catch (err){
+        console.error("send error:", err);
+        const wrap = ensureStream();
+        const er = document.createElement("div");
+        er.className = "row ai";
+        er.innerHTML = '<div class="ai-mark">' + CAT_SVG + '</div><div class="ai-body"><div class="ai-name">Akitta</div><div class="ai-text"><p>Something went wrong. Please try again.</p></div></div>';
+        wrap.appendChild(er);
+        scrollDown();
+      } finally {
+        streaming = false;
+        setSend();
+        try { ta.focus(); } catch(_){}
+      }
+    }
+
+    async function regenerate(){
+      if (streaming) return;
+      const c = current(); if (!c) return;
+      let idx = -1;
+      for (let i = c.msgs.length - 1; i >= 0; i--){
+        if (c.msgs[i].role === "user"){ idx = i; break; }
+      }
+      if (idx === -1) return;
+      const userMsg = c.msgs[idx];
+      c.msgs = c.msgs.slice(0, idx + 1);
+      renderStage();
+      streaming = true; setSend();
+      try {
+        const wrap = ensureStream();
+        const aiRow = buildRow({ role:"ai", content:"" });
+        wrap.appendChild(aiRow);
+        scrollDown();
+        const history = c.msgs.filter(m => (m.content && m.content.trim()) || (m.attachments && m.attachments.length));
+        const { text: reply, sources, images } = await generateAnswer(userMsg.content || "", history.slice(0, -1), aiRow, userMsg.attachments || []);
+        const target = aiRow.querySelector(".ai-text");
+        target.innerHTML = md(reply);
+        if (sources && sources.length){
+          let sb = aiRow.querySelector(".ai-sources");
+          if (!sb){
+            sb = document.createElement("div");
+            sb.className = "ai-sources";
+            target.parentNode.insertBefore(sb, aiRow.querySelector(".acts"));
+          }
+          sb.innerHTML = buildSources(sources);
+        }
+        c.msgs.push({ role:"ai", content: reply, sources: sources || [], images: images || [] });
+        wireCodeButtons(aiRow);
+        if (ttsEnabled && reply) speakText(reply);
+      } finally {
+        streaming = false;
+        setSend();
+      }
+    }
+
+    ta.addEventListener("input", () => { autoGrow(); setSend(); });
+    ta.addEventListener("keydown", e => {
+      if (e.key === "Enter" && !e.shiftKey){
+        e.preventDefault();
+        if (!sendBtn.disabled) send();
+      }
+    });
+    sendBtn.addEventListener("click", send);
+
+    $("newChat").addEventListener("click", () => { if (!streaming) newChat(); });
+
+    const menuBtn = $("menuBtn");
+    function openSidebarMobile(){ sidebar.classList.remove("hidden"); scrim.classList.add("on"); }
+    function closeSidebarMobile(){ if (window.innerWidth <= 860){ sidebar.classList.add("hidden"); scrim.classList.remove("on"); } }
+    menuBtn.addEventListener("click", openSidebarMobile);
+    scrim.addEventListener("click", closeSidebarMobile);
+    function checkWidth(){
+      if (window.innerWidth <= 860){ menuBtn.style.display = "grid"; sidebar.classList.add("hidden"); }
+      else { menuBtn.style.display = "none"; sidebar.classList.remove("hidden"); scrim.classList.remove("on"); }
+    }
+    window.addEventListener("resize", checkWidth);
+
+    window.addEventListener("akitta:pro", () => { applyProUI(); renderStage(); });
+
+    checkWidth();
+    newChat();
+
+    window.__akittaRefreshUser = function(){
+      chats.length = 0;
+      attachments.length = 0;
+      renderAttachments();
+      newChat();
+      applyProUI();
+      if (isListening) stopListening(false);
+      stopSpeaking();
+    };
+  };
+
+  function bootCheck(){
+    applyProUI();
+    const session = loadSession();
+    if (session){
+      const accounts = loadAccounts();
+      const account = accounts.find(a => a.username === session);
+      if (account){
+        enterApp({ username: account.username });
+      } else {
+        clearSession();
+        setMode("signin");
+      }
+    } else {
+      setMode("signin");
+    }
+  }
+
+  bootCheck();
+})();
+</script>
+</body>
+</html>
